@@ -59,6 +59,9 @@ reset:
 %.boot:
 	(cd $(workarea) && $(MAKE) $*.boot)
 
+auto.boot:
+	(cd $(workarea) && $(MAKE) $(defaultm).boot)
+
 # <machine>.bootquick to build boot files for <machine>
 # with o=3 d=0 for the cross compiler, and only after
 # building the kernel for the configured machine
@@ -67,6 +70,12 @@ reset:
 
 auto.bootquick:
 	(cd $(workarea) && $(MAKE) $(defaultm).bootquick)
+
+# <machine>-<tag>.boot to repackage boot files for
+# <mactine> with pbchunk sources, including additional
+# boot files
+%.bootpbchunk:
+	(cd $(workarea) && $(MAKE) $*.bootpbchunk ARGS="$(ARGS)")
 
 # Supply ORIG=<dir> to build using existing at <dir>
 .PHONY: from-orig

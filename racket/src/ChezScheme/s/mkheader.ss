@@ -421,11 +421,17 @@
         (export "void" "Sinitframe" "(iptr)")
         (export "void" "Sput_arg" "(iptr, ptr)")
         (export "ptr" "Scall" "(ptr, iptr)")
-        (comment "Warning: Sforeign_callable_entry_point(x) returns a pointer into x.")
-        (def "Sforeign_callable_entry_point(x)"
-             (&ref "(void (*) PROTO((void)))" "x" ($ code-data-disp)))
-        (def "Sforeign_callable_code_object(x)"
-             (&ref "(ptr)" "x" (- ($ code-data-disp))))
+        (constant-case architecture
+          [(pb)
+           (def "Sforeign_callable_entry_point(x)"
+                "TO_PTR(Svector_ref(x, 2))")
+           (export "ptr" "Sforeign_callable_code_object" "(void*)")]
+          [else
+           (comment "Warning: Sforeign_callable_entry_point(x) returns a pointer into x.")
+           (def "Sforeign_callable_entry_point(x)"
+                (&ref "(void (*) PROTO((void)))" "x" ($ code-data-disp)))
+           (def "Sforeign_callable_code_object(x)"
+                (&ref "(ptr)" "x" (- ($ code-data-disp))))])
   
         (nl) (comment "Customization support.")
         (export "const char *" "Skernel_version" "(void)")
@@ -446,6 +452,10 @@
         (export "int"  "Sscheme_program" "(const char *, int, const char *[])")
         (export "void" "Sscheme_deinit" "(void)")
         (export "void" "Sscheme_register_signal_registerer" "(void (*f)(int))")
+        (constant-case architecture
+          [(pb)
+           (export "void" "Sregister_pbchunks" "(void **, int, int)")]
+          [else (void)])
 
         (when-feature pthreads
         (nl) (comment "Thread support.")
@@ -870,10 +880,18 @@
             (pr "  } while (0)~%")]
           [(pb)
            (pr "#define INITLOCK(addr) (*((long *) addr) = 0)~%")
-           (pr "#define SPINLOCK(addr) (*((long *) addr) = 1)~%")
            (pr "#define UNLOCK(addr) (*((long *) addr) = 0)~%")
-           (pr "#define LOCKED_INCR(addr, res) (res = ((*(uptr*)addr)-- == 1))~%")
-           (pr "#define LOCKED_DECR(addr, res) (res = ((*(uptr*)addr)-- == 1))~%")]
+           (if-feature pthreads
+             (begin
+               (pr "#define SPINLOCK(addr) S_pb_spinlock(addr)~%")
+               (pr "#define LOCKED_INCR(addr, res) (res = S_pb_locked_adjust(addr, 1))~%")
+               (pr "#define LOCKED_DECR(addr, res) (res = S_pb_locked_adjust(addr, -1))~%")
+               (export "void" "S_pb_spinlock" "(void*)")
+               (export "int" "S_pb_locked_adjust" "(void*, int)"))
+             (begin
+               (pr "#define SPINLOCK(addr) (*((long *) addr) = 1)~%")               
+               (pr "#define LOCKED_INCR(addr, res) (res = ((*(uptr*)addr)++ == -1))~%")
+               (pr "#define LOCKED_DECR(addr, res) (res = ((*(uptr*)addr)-- == 1))~%")))]
           [else
             ($oops who "asm locking code is not yet defined for ~s" (constant architecture))]))))
 
@@ -963,6 +981,26 @@
           (print-field-disps "eq_hashtable" (let () (include "hashtable-types.ss") (record-type-descriptor eq-ht)))
           (print-field-disps "symbol_hashtable" (let () (include "hashtable-types.ss") (record-type-descriptor symbol-ht)))
           (print-field-disps "code_info" (let () (include "types.ss") (record-type-descriptor code-info))))
+
+        (nl)
+        (comment "derived endianness")
+        (case (constant native-endianness)
+          [(little)
+           (def "native_endianness_is_little" 1)
+           (def "native_endianness_is_big" 0)]
+          [(big)
+           (def "native_endianness_is_little" 0)
+           (def "native_endianness_is_big" 1)]
+          [else
+           (def "native_endianness_is_little" 0)
+           (def "native_endianness_is_big" 0)])
+        (case (constant fasl-endianness)
+          [(little)
+           (def "fasl_endianness_is_little" 1)
+           (def "fasl_endianness_is_big" 0)]
+          [else
+           (def "fasl_endianness_is_little" 0)
+           (def "fasl_endianness_is_big" 1)])
 
         (nl)
         (comment "predicates")

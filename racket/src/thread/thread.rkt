@@ -14,7 +14,8 @@
          "schedule-info.rkt"
          "custodian.rkt"
          "custodian-object.rkt"
-         "exit.rkt")
+         "exit.rkt"
+         "error.rkt")
 
 (provide (rename-out [make-thread thread])
          thread/suspend-to-kill
@@ -428,15 +429,20 @@
 ;; thread, where the thunk returns `(void)`;
 (define (do-thread-deschedule! t timeout-at)
   (assert-atomic-mode)
-  (when (thread-descheduled? t)
-    (internal-error "tried to deschedule a descheduled thread"))
-  (set-thread-descheduled?! t #t)
-  (thread-group-remove! (thread-parent t) t)
-  (thread-unscheduled-for-work-tracking! t)
-  (when timeout-at
-    (add-to-sleeping-threads! t (sandman-merge-timeout #f timeout-at)))
-  (when (eq? t (current-thread/in-atomic))
-    (thread-did-work!))
+  (cond
+    [(thread-descheduled? t)
+     (unless (eq? (thread-descheduled? t) 'terribly-wrong)
+       ;; avoid complaining forever about the same thread:
+       (set-thread-descheduled?! t 'terribly-wrong)
+       (internal-error "tried to deschedule a descheduled thread"))]
+    [else
+     (set-thread-descheduled?! t #t)
+     (thread-group-remove! (thread-parent t) t)
+     (thread-unscheduled-for-work-tracking! t)
+     (when timeout-at
+       (add-to-sleeping-threads! t (sandman-merge-timeout #f timeout-at)))
+     (when (eq? t (current-thread/in-atomic))
+       (thread-did-work!))])
   ;; Beware that this thunk is not used when a thread is descheduled
   ;; by a custodian callback
   (lambda ()
@@ -445,7 +451,9 @@
         (when (positive? (current-atomic))
           (if (force-atomic-timeout-callback)
               (loop)
-              (internal-error "attempt to deschedule the current thread in atomic mode"))))
+              (begin
+                (abort-atomic)
+                (internal-error "attempt to deschedule the current thread in atomic mode")))))
       ;; implies `(check-for-break)`:
       (engine-block))))
 
@@ -829,7 +837,7 @@
              (call-with-escape-continuation
               (lambda (k)
                 (raise (exn:break*
-                        "user break"
+                        (error-message->string #f "user break")
                         (current-continuation-marks)
                         k)))))]
           [else void]))))))
@@ -940,7 +948,7 @@
   (define mbx (thread-mailbox thd))
   (cond
     [(queue-empty? mbx)
-     (internal-error "No Mail!\n")]
+     (internal-error "no mail!")]
     [else
      (queue-remove! mbx)]))
 

@@ -175,9 +175,9 @@
 
 (syntax-test #'(syntax-case (syntax x) [x (define x 1)]))
 (syntax-test #'(syntax-case (syntax x) () [x (define x 1)])
-             #rx"stx.rktl:.*no expression after a sequence of internal definitions")
+             #rx"stx.rktl:.*the last form is not an expression")
 (syntax-test #'(syntax-case* (syntax x) () eq? [x (define x 1)])
-             #rx"stx.rktl:.*no expression after a sequence of internal definitions")
+             #rx"stx.rktl:.*the last form is not an expression")
 
 
 ;; ----------------------------------------
@@ -2408,6 +2408,17 @@
                  #rx"^something: .*#0=#[(]#0#[)]"))
   (check-err v #f)
   (check-err 'bad v))
+
+;; ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(let ()
+  (err/rt-test (raise-syntax-error 'something "" #:exn exn:fail:syntax:unbound)
+               exn:fail:syntax:unbound?
+               #rx"^something:")
+
+  (err/rt-test (raise-syntax-error 'something "" #:exn (λ (a b c) 1))
+               exn:fail:contract?
+               #rx"raise-syntax-error: contract violation"))
 
 ;; ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 

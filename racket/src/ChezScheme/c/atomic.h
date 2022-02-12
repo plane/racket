@@ -34,19 +34,19 @@
 #endif
   
 #if !defined(PTHREADS)
-# define CAS_ANY_FENCE(a, old, new) ((*(a) == (old)) ? (*(a) = (new), 1) : 0)
+# define CAS_ANY_FENCE(a, old, new) ((*(ptr *)(a) == TO_PTR(old)) ? (*(ptr)(a) = TO_PTR(new), 1) : 0)
 #elif defined(__arm64__) || defined(__aarch64__)
 FORCEINLINE int CAS_LOAD_ACQUIRE(volatile void *addr, void *old_val, void *new_val) {
   long ret;
-  __asm__ __volatile__ ("mov %0, #0\n\t"       
+  __asm__ __volatile__ ("mov %0, #0\n\t"
                         "0:\n\t"
                         "ldaxr x12, [%1, #0]\n\t"
                         "cmp x12, %2\n\t"
                         "bne 1f\n\t"
-                        "stxr x7, %3, [%1, #0]\n\t"
+                        "stxr w7, %3, [%1, #0]\n\t"
                         "cmp x7, #0\n\t"
                         "bne 1f\n\t"
-                        "moveq %0, #1\n\t"
+                        "mov %0, #1\n\t"
                         "1:\n\t"
                         : "=&r" (ret)
                         : "r" (addr), "r" (old_val), "r" (new_val)
@@ -61,10 +61,10 @@ FORCEINLINE int CAS_STORE_RELEASE(volatile void *addr, void *old_val, void *new_
                         "ldxr x12, [%1, #0]\n\t"
                         "cmp x12, %2\n\t"
                         "bne 1f\n\t"
-                        "stlxr x7, %3, [%1, #0]\n\t"
+                        "stlxr w7, %3, [%1, #0]\n\t"
                         "cmp x7, #0\n\t"
                         "bne 1f\n\t"
-                        "moveq %0, #1\n\t"
+                        "mov %0, #1\n\t"
                         "1:\n\t"
                         : "=&r" (ret)
                         : "r" (addr), "r" (old_val), "r" (new_val)
@@ -97,7 +97,7 @@ FORCEINLINE int S_cas_any_fence(int load_acquire, volatile void *addr, void *old
 # define CAS_LOAD_ACQUIRE(a, old, new) S_cas_any_fence(1, a, old, new)
 # define CAS_STORE_RELEASE(a, old, new) S_cas_any_fence(0, a, old, new)
 #elif (__GNUC__ >= 5) || defined(__clang__)
-# define CAS_ANY_FENCE(a, old, new) __sync_bool_compare_and_swap(a, old, new)
+# define CAS_ANY_FENCE(a, old, new) __sync_bool_compare_and_swap((ptr *)(a), TO_PTR(old), TO_PTR(new))
 #elif defined(_MSC_VER)
 # if ptr_bits == 64
 #  define CAS_ANY_FENCE(a, old, new) (_InterlockedCompareExchange64((__int64 *)(a), (__int64)(new), (__int64)(old)) == (__int64)(old))
@@ -120,10 +120,12 @@ FORCEINLINE int S_cas_any_fence(volatile void *addr, void *old_val, void *new_va
 }
 # define CAS_ANY_FENCE(a, old, new) S_cas_any_fence(a, old, new)
 #else
-# define CAS_ANY_FENCE(a, old, new) ((*(a) == (old)) ? (*(a) = (new), 1) : 0)
+# define CAS_ANY_FENCE(a, old, new) ((*(ptr *)(a) == TO_PTR(old)) ? (*(ptr *)(a) = TO_PTR(new), 1) : 0)
 #endif
 
 #ifdef CAS_ANY_FENCE
 # define CAS_LOAD_ACQUIRE(a, old, new)  CAS_ANY_FENCE(a, old, new)
 # define CAS_STORE_RELEASE(a, old, new) CAS_ANY_FENCE(a, old, new)
+#else
+# define CAS_ANY_FENCE(a, old, new) CAS_LOAD_ACQUIRE(a, old, new)  
 #endif

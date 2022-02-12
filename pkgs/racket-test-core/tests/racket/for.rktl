@@ -431,6 +431,33 @@
                    [y (in-range 3)])
         (+ x y)))
 
+;; Check #:do:
+(test (vector 0 0 1 0 1 2)
+      'do
+      (for/vector #:length 6
+                  ([x (in-range 3)]
+                   #:do [(define z (+ x 1))]
+                   [y (in-range z)])
+                  y))
+(test (vector 0 0 1 0 1 2)
+      'do
+      (for/vector #:length 6
+                  ([x (in-range 3)]
+                   #:do [(define-syntax-rule (z) (+ x 1))]
+                   [x (in-list '(oops))]
+                   #:when #t
+                   [y (in-range (z))])
+                  y))
+(test (vector 0 0 0 1 1 1)
+      'do
+      (for/vector #:length 6
+                  ([x (in-range 3)]
+                   #:do [(struct pt (x y))
+                         (define (mk x y) (pt x y))]
+                   #:when #t
+                   [y (in-range 3)])
+        (pt-x (mk x y))))
+
 (test #hash((a . 1) (b . 2) (c . 3)) 'mk-hash
       (for/hash ([v (in-naturals)]
                  [k '(a b c)])
@@ -774,13 +801,13 @@
              #rx"expected\\: vector")
 (err/rt-test (for ([x (in-vector (vector 1 2) -1)]) x)
              exn:fail:contract?
-             #rx"starting index is out of range")
+             #rx"expected\\: exact-nonnegative-integer\\?")
 (err/rt-test (for ([x (in-vector (vector 1 2) 10)]) x)
              exn:fail:contract?
              #rx"starting index is out of range")
 (err/rt-test (for ([x (in-vector (vector 1 2) 1.1)]) x)
              exn:fail:contract?
-             #rx"expected\\: exact-integer\\?")
+             #rx"expected\\: exact-nonnegative-integer\\?")
 (err/rt-test (for ([x (in-vector (vector 1 2) 0 1.1)]) x)
              exn:fail:contract?
              #rx"expected\\: exact-integer\\?")
@@ -826,7 +853,7 @@
              #rx"starting index is out of range")
 (err/rt-test (for/sum ([x (in-vector (vector) -1 -1 -1)]) x)
              exn:fail:contract?
-             #rx"starting index is out of range")
+             #rx"expected: exact-nonnegative-integer?")
 (err/rt-test (for/sum ([x (in-vector (vector) 1 1 1)]) x)
              exn:fail:contract?
              #rx"starting index is out of range")
@@ -1130,6 +1157,14 @@
                    #:final (and (= x 2) (= y 3)))
         (cons (list x y) lst)))
 
+(test (list 0 0 1 0 1 2)
+      'do
+      (for/foldr ([acc null])
+                 ([x (in-range 3)]
+                  #:do [(define-syntax-rule (z) (+ x 1))]
+                  [y (in-range (z))])
+         (cons y acc)))
+
 (test '(408 . 20400)
       'for/foldr-two-accs
       (for/foldr ([a 1] [b 1] #:result (cons a b))
@@ -1215,7 +1250,7 @@
 (let ()
   (test #t 'same-expansion-for-integer-clause
         (equal? (syntax->datum (expand #'(for ([j 100]) j)))
-                (syntax->datum (expand #'(for ([j (in-range 100)]) j)))))
+                (syntax->datum (expand #'(for ([j (in-range '100)]) j)))))
 
   (test #t 'same-expansion-for-list-clause
         (equal? (syntax->datum (expand #'(for ([j '(1 2 3)]) j)))
@@ -1258,6 +1293,64 @@
 
 (err/rt-test (for/list ([x -1]) x))
 (err/rt-test (for/list ([x 1.5]) x))
+
+;; ----------------------------------------
+;; splicing clauses
+
+(define-splicing-for-clause-syntax parallel3
+  (lambda (stx)
+    (syntax-case stx ()
+      [(_ n m) #'([n (in-range 3)]
+                  [m (in-range 3)])])))
+
+(define-splicing-for-clause-syntax cross3
+  (lambda (stx)
+    (syntax-case stx ()
+      [(_ n m) #'([n (in-range 3)]
+                  #:when #t
+                  [m (in-range 3)])])))
+
+(test '((0 0) (1 1) (2 2))
+      'parallel3
+      (for/list (#:splice (parallel3 n m))
+        (list n m)))
+(test '((0 0) (1 1) (2 2))
+      'parallel3
+      (for*/list (#:splice (parallel3 n m))
+        (list n m)))
+
+(test '((0 0) (0 1) (0 2) (1 0) (1 1) (1 2) (2 0) (2 1) (2 2))
+      'cross3
+      (for/list (#:splice (cross3 n m))
+        (list n m)))
+(test '((0 0) (0 1) (0 2) (1 0) (1 1) (1 2) (2 0) (2 1) (2 2))
+      'cross3
+      (for*/list (#:splice (cross3 n m))
+        (list n m)))
+
+(define-splicing-for-clause-syntax final-if-7
+  (lambda (stx)
+    (syntax-case stx ()
+      [(_ i) #'(#:final (= i 7))])))
+(test '(0 1 2 3 4 5 6 7)
+      'final-if-7
+      (for/list ([i (in-range 10)] #:splice (final-if-7 i)) i))
+
+;; ----------------------------------------
+;; Make sure explicitly quoted datum doesn't need to have a `#%datum` binding
+
+(test '(0)
+      eval-syntax #`(for/list ([i (quote #,(datum->syntax #f 1))]) i))
+(test '(1)
+      eval-syntax #`(for/list ([i (quote #,(datum->syntax #f '(1)))]) i))
+(test '(1)
+      eval-syntax #`(for/list ([i (quote #,(datum->syntax #f '#(1)))]) i))
+(test '(#\1)
+      eval-syntax #`(for/list ([i (quote #,(datum->syntax #f "1"))]) i))
+(test '(49)
+      eval-syntax #`(for/list ([i (quote #,(datum->syntax #f #"1"))]) i))
+(test '(1)
+      eval-syntax #`(for/list ([(k v) (quote #,(datum->syntax #f #hash((1 . 0))))]) k))
 
 ;; ----------------------------------------
 
