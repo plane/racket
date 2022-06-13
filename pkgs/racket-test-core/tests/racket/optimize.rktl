@@ -1519,11 +1519,9 @@
            '(lambda () (void (random 2))))
 (test-comp '(lambda (x) (void (if (eq? (random 2) 0) (box x) (list x))))
            '(lambda (x) (void (random 2))))
-(test-comp #:except 'chez-scheme
-           '(lambda (x) (void (if x (random) 1)))
+(test-comp '(lambda (x) (void (if x (random) 1)))
            '(lambda (x) (void (if x (random) 2))))
-(test-comp #:except 'chez-scheme
-           '(lambda (x) (void (if x 1 (random))))
+(test-comp '(lambda (x) (void (if x 1 (random))))
            '(lambda (x) (void (if x 2 (random)))))
 (test-comp '(lambda (x) (void (if x (random) 1)))
            '(lambda (x) (void))
@@ -2742,8 +2740,7 @@
               (when (and (list? z)
                          (pair? z))
                 #t)))
-(test-comp #:except 'chez-scheme 
-           '(lambda (z)
+(test-comp '(lambda (z)
               (when (and (list? z)
                          (not (null? z)))
                 (k:list-pair? z)))
@@ -2759,8 +2756,7 @@
               (when (and (list? z)
                          (not (pair? z)))
                 #t)))
-(test-comp #:except 'chez-scheme
-           '(lambda (z)
+(test-comp '(lambda (z)
               (when (and (list? z)
                          (not (k:list-pair? z)))
                 (null? z)))
@@ -2768,8 +2764,7 @@
               (when (and (list? z)
                          (not (k:list-pair? z)))
                 #t)))
-(test-comp #:except 'chez-scheme
-           '(lambda (z)
+(test-comp '(lambda (z)
               (when (and (boolean? z)
                          (not (k:true-object? z)))
                 (not z)))
@@ -3028,7 +3023,7 @@
   (test-use-unsafe-fxbinary 'fxmin 'unsafe-fxmin)
   (test-use-unsafe-fxbinary 'fxmax 'unsafe-fxmax))
 
-(unless (eq? 'chez-scheme (system-type 'vm)) ; cptypes doesn't currently convert to fixnum ops
+(unless (eq? 'chez-scheme (system-type 'vm)) ; in these cases, cptypes converts zero? to fxzero?
   (test-comp '(lambda (vx)
                 (let ([x (string-length vx)])
                   (zero? x)))
@@ -3048,36 +3043,57 @@
                 (when (and (fixnum? x) (zero? (random 2)))
                   (unsafe-fx= x 0)))))
 
-(unless (eq? 'chez-scheme (system-type 'vm)) ; cptypes doesn't currently convert to fixnum ops
-  ;test special case for bitwise-and and fixnum?
-  (test-comp '(lambda (x)
-                (let ([y (bitwise-and x 2)])
-                  (list y y (fixnum? y))))
-             '(lambda (x)
-                (let ([y (bitwise-and x 2)])
-                  (list y y #t))))
-  (test-comp '(lambda (x)
-                (let ([y (bitwise-and x 2)])
-                  (fixnum? x)))
-             '(lambda (x)
-                (let ([y (bitwise-and x 2)])
-                  #t))
-             #f))
+;test special case for bitwise-and and fixnum?
+(test-comp '(lambda (x)
+              (let ([y (bitwise-and x 2)])
+                (list y y (fixnum? y))))
+           '(lambda (x)
+              (let ([y (bitwise-and x 2)])
+                (list y y #t))))
+(test-comp '(lambda (x)
+              (let ([y (bitwise-and x 2)])
+                (fixnum? x)))
+           '(lambda (x)
+              (let ([y (bitwise-and x 2)])
+                #t))
+           #f)
+(test-comp #:except 'racket
+           '(lambda (x)
+              (let ([y (bitwise-ior x -2)])
+                (list y y (fixnum? y))))
+           '(lambda (x)
+              (let ([y (bitwise-ior x -2)])
+                (list y y #t))))
+(test-comp '(lambda (x)
+              (let ([y (bitwise-ior x -2)])
+                (fixnum? x)))
+           '(lambda (x)
+              (let ([y (bitwise-ior x -2)])
+                #t))
+           #f)
 
-(unless (eq? 'chez-scheme (system-type 'vm)) ; no literal specializations right now
-  ;; Make sure that `bitwise-and` is known to return a fixnum for non-negative
-  ;; fixnum arguments but not for a negative one
+;; Make sure that `bitwise-and` is known to return a fixnum for non-negative
+;; fixnum arguments but not for a negative one
 
-  (test-comp '(lambda (x)
-                (bitwise-ior (bitwise-and x 7) 1))
-             '(lambda (x)
-                (unsafe-fxior (bitwise-and x 7) 1)))
-  (test-comp '(lambda (x)
-                (bitwise-ior (bitwise-and x -7) 1))
-             '(lambda (x)
-                (unsafe-fxior (bitwise-and x -7) 1))
-             #f))
-
+(test-comp '(lambda (x)
+              (bitwise-ior (bitwise-and x 7) 1))
+           '(lambda (x)
+              (unsafe-fxior (bitwise-and x 7) 1)))
+(test-comp '(lambda (x)
+              (bitwise-ior (bitwise-and x -7) 1))
+           '(lambda (x)
+              (unsafe-fxior (bitwise-and x -7) 1))
+           #f)
+(test-comp #:except 'racket
+           '(lambda (x)
+              (bitwise-ior (bitwise-ior x -7) 1))
+           '(lambda (x)
+              (unsafe-fxior (bitwise-ior x -7) 1)))
+(test-comp '(lambda (x)
+              (bitwise-ior (bitwise-ior x 7) 1))
+           '(lambda (x)
+              (unsafe-fxior (bitwise-ior x 7) 1))
+           #f)
 
 (test-comp `(lambda (x)
               (thread (lambda () (set! x 5)))
@@ -3643,19 +3659,26 @@
                '(lambda (x) 5)
                #f))
   (check-empty-allocation 'hash)
+  (check-empty-allocation 'hashalw)
   (check-empty-allocation 'hasheqv)
   (check-empty-allocation 'hasheq)
   (check-empty-allocation 'make-hash)
+  (check-empty-allocation 'make-hashalw)
   (check-empty-allocation 'make-hasheqv)
   (check-empty-allocation 'make-hasheq)
   (check-empty-allocation 'make-weak-hash)
+  (check-empty-allocation 'make-weak-hashalw)
   (check-empty-allocation 'make-weak-hasheqv)
   (check-empty-allocation 'make-weak-hasheq)
   (check-empty-allocation 'make-immutable-hash)
+  (check-empty-allocation 'make-immutable-hashalw)
   (check-empty-allocation 'make-immutable-hasheqv)
   (check-empty-allocation 'make-immutable-hasheq)
 
   (test-comp `(lambda (x y) (hash x y) 5) ; can trigger equal callbacks
+             '(lambda () 5)
+             #f)
+  (test-comp `(lambda (x y) (hashalw x y) 5) ; can trigger equal-always callbacks
              '(lambda () 5)
              #f)
   (test-comp `(lambda (x y) (hasheqv x y) 5)
@@ -3665,6 +3688,9 @@
 
   ;; Wrong arity
   (test-comp `(lambda (x y) (hash x) 5)
+             '(lambda (x) 5)
+             #f)
+  (test-comp `(lambda (x y) (hashalw x) 5)
              '(lambda (x) 5)
              #f)
   (test-comp `(lambda (x) (hasheqv x) 5)

@@ -4,9 +4,9 @@ This variant of Chez Scheme is extended to support the implementation
 of [Racket](https://racket-lang.org/), and the main additions are
 listed at the end of this README.
 
-Supported platforms:
+Supported platforms (bytecode interpreter may work for others):
 
- * Windows: x86, x86_64
+ * Windows: x86, x86_64, AArch64
  * Mac OS: x86, x86_64, AArch64, PowerPC32
  * Linux: x86, x86_64, ARMv6, AArch64, PowerPC32
  * FreeBSD: x86, x86_64, ARMv6, AArch64, PowerPC32

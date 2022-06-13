@@ -1,5 +1,9 @@
 #if !defined(PTHREADS)
 # define STORE_FENCE() do { } while (0)
+#elif defined(_MSC_VER) && defined(_M_ARM64)
+# define STORE_FENCE() __dmb(_ARM64_BARRIER_ISHST)
+# define ACQUIRE_FENCE() __dmb(_ARM64_BARRIER_ISH)
+# define RELEASE_FENCE() ACQUIRE_FENCE()
 #elif defined(__arm64__) || defined(__aarch64__)
 # define STORE_FENCE() __asm__ __volatile__ ("dmb ishst" : : : "memory")
 # define ACQUIRE_FENCE() __asm__ __volatile__ ("dmb ish" : : : "memory")
@@ -35,9 +39,15 @@
   
 #if !defined(PTHREADS)
 # define CAS_ANY_FENCE(a, old, new) ((*(ptr *)(a) == TO_PTR(old)) ? (*(ptr)(a) = TO_PTR(new), 1) : 0)
+#elif defined(_MSC_VER)
+# if ptr_bits == 64
+#  define CAS_ANY_FENCE(a, old, new) (_InterlockedCompareExchange64((__int64 *)(a), (__int64)(new), (__int64)(old)) == (__int64)(old))
+# else
+#  define CAS_ANY_FENCE(a, old, new) (_InterlockedCompareExchange64((long *)(a), (long)(new), (long)(old)) == (long)(old))
+# endif
 #elif defined(__arm64__) || defined(__aarch64__)
 FORCEINLINE int CAS_LOAD_ACQUIRE(volatile void *addr, void *old_val, void *new_val) {
-  long ret;
+  I64 ret;
   __asm__ __volatile__ ("mov %0, #0\n\t"
                         "0:\n\t"
                         "ldaxr x12, [%1, #0]\n\t"
@@ -55,7 +65,7 @@ FORCEINLINE int CAS_LOAD_ACQUIRE(volatile void *addr, void *old_val, void *new_v
 }
 /* same as above, but ldaxr -> ldxr and stxr -> stlxr */
 FORCEINLINE int CAS_STORE_RELEASE(volatile void *addr, void *old_val, void *new_val) {
-  long ret;
+  I64 ret;
   __asm__ __volatile__ ("mov %0, #0\n\t"       
                         "0:\n\t"
                         "ldxr x12, [%1, #0]\n\t"
@@ -98,12 +108,6 @@ FORCEINLINE int S_cas_any_fence(int load_acquire, volatile void *addr, void *old
 # define CAS_STORE_RELEASE(a, old, new) S_cas_any_fence(0, a, old, new)
 #elif (__GNUC__ >= 5) || defined(__clang__)
 # define CAS_ANY_FENCE(a, old, new) __sync_bool_compare_and_swap((ptr *)(a), TO_PTR(old), TO_PTR(new))
-#elif defined(_MSC_VER)
-# if ptr_bits == 64
-#  define CAS_ANY_FENCE(a, old, new) (_InterlockedCompareExchange64((__int64 *)(a), (__int64)(new), (__int64)(old)) == (__int64)(old))
-# else
-#  define CAS_ANY_FENCE(a, old, new) (_InterlockedCompareExchange64((long *)(a), (long)(new), (long)(old)) == (long)(old))
-# endif
 #elif defined(__i386__) || defined(__x86_64__)
 # if ptr_bits == 64
 #   define CAS_OP_SIZE "q"

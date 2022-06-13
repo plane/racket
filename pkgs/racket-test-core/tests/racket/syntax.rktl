@@ -2393,6 +2393,7 @@
 
   (test #t check '(a b))
   (test #t check '#(a b #hash((c . 9))))
+  (test #t check '#(a b #hashalw(("c" . 10) ("d" . 11))))
   (test #t check '(#hasheqv((10 . 11) (12 . 13)) #&"str" #s(color r G #b0)))
   (test #t check '(#hasheq((x . 11) (y . 13) (z . #f)) (1 . 2))))
 
@@ -2516,6 +2517,17 @@
                        ([i '(1)])
                (values (values x y)))
              exn:fail:contract:arity?)
+
+;; ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; Regression test to make that an ok reference to `unsafe-undefined`
+;; isn't mangled to a disallowed reference:
+
+(parameterize ([current-code-inspector (current-code-inspector)])
+  (parameterize ([current-namespace (make-base-namespace)])
+    (eval '(module test racket/base
+             (provide t)
+             (define (t #:a [a "12345678"]) (list a))
+             (t)))))
 
 ;; ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 

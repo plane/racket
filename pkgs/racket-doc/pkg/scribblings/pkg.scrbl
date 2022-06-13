@@ -1356,14 +1356,14 @@ The following @filepath{info.rkt} fields are used by the package manager:
   @margin-note{See @elemref["spdx-plus-operator"]{further details below}
    about @racket[_license-id] and the @litchar{+} operator.}
 
-  where a:
+  where:
 
   @itemize[
- @item{@racket[_license-id] is a short-form identifier from the
+ @item{a @racket[_license-id] is a short-form identifier from the
     @hyperlink["https://spdx.org/licenses/index.html"]{SPDX License List},
     e.g@._ @racketvalfont{LGPL-3.0-or-later}, @racketvalfont{Apache-2.0},
-    or @racket[BSD-3-Clause]; and an}
- @item{@racket[_exception-id] is an identifier from the
+    or @racketvalfont{BSD-3-Clause}; and}
+ @item{an @racket[_exception-id] is an identifier from the
     @hyperlink["https://spdx.org/licenses/exceptions-index.html"]{
      SPDX License Exceptions} list, e.g@._ @racketvalfont{Classpath-exception-2.0}.}]
 
@@ -1374,11 +1374,11 @@ The following @filepath{info.rkt} fields are used by the package manager:
 
   The grammar of @tech{license S-expressions} is designed so that
   @racket[(format "~s" license)] produces a string conforming to the grammar in
-  @hyperlink["https://spdx.github.io/spdx-spec/appendix-IV-SPDX-license-expressions/"]{
-  Appendix IV} and
-  @hyperlink["https://spdx.github.io/spdx-spec/appendix-V-using-SPDX-short-identifiers-in-source-files/"]{
-  Appendix V}
-  of the SPDX Specification v2.2.0,
+  @hyperlink["https://spdx.github.io/spdx-spec/SPDX-license-expressions/"]{
+  Annex D} and
+  @hyperlink["https://spdx.github.io/spdx-spec/using-SPDX-short-identifiers-in-source-files/"]{
+  Annex E}
+  of the SPDX Specification v2.2.2,
   which is specified in terms of character sequences.
 
   @elemtag["spdx-plus-operator"]{If the @litchar{+} operator is used,}

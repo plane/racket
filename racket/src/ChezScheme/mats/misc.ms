@@ -1971,7 +1971,7 @@
 )
 
 (mat $fasl-file-equal?
-  (let ([fn (format "~a/fatfib.ss" *examples-directory*)])
+  (let ([fn (find-source "fatfib.ss")])
     (parameterize ([generate-inspector-information #t])
       (compile-file fn "testfile-fatfib1.so"))
     (parameterize ([generate-inspector-information #t])
@@ -2157,18 +2157,7 @@
 
   (when-threaded
     (begin
-      (define $threads (foreign-procedure "(cs)threads" () scheme-object))
-      (define $nthreads 1)
-      (define $yield
-        (let ([t (make-time 'time-duration 1000 0)])
-          (lambda () (sleep t))))
-      (define $thread-check
-        (lambda ()
-          (let ([ls ($threads)])
-            (unless (= $nthreads (length ls))
-              (errorf #f "extra threads running ~s" ls))
-            (collect))
-          #t))
+      (include "thread-check.ss")
       ($thread-check)))
 
   (when-threaded
@@ -4647,6 +4636,7 @@
 )
 
 (unless (memq (machine-type) '(arm32le tarm32le arm64le tarm64le arm64osx tarm64osx ; timestamp counter tends to be priviledged on Arm
+				       arm64nt tarm64nt
                                        pb)) ; doesn't increment for pb
   (mat $read-time-stamp-counter
 

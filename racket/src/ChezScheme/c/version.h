@@ -22,16 +22,28 @@
 # define PTHREADS
 #endif
 
+#ifdef WIN32
+# undef FORCEINLINE
+# ifndef __MINGW32__
+#  define FORCEINLINE static __forceinline
+# else
+#  define FORCEINLINE static __attribute__((__always_inline__)) inline
+# endif
+#else
+#define FORCEINLINE static inline
+#endif
+
 /*****************************************/
 /* Architectures                         */
 
-#if (defined(__powerpc__) || defined(__POWERPC__)) && !defined(__powerpc64__)
+#if ((defined(__powerpc__) || defined(__POWERPC__)) && !defined(__powerpc64__)) \
+  || defined(__sparc__)
 # define PORTABLE_BYTECODE_BIGENDIAN
 # define BIG_ENDIAN_IEEE_DOUBLE
 # define FLUSHCACHE
 #endif
 
-#if (defined(__arm__) || defined(__arm64__) || defined(__aarch64__))
+#if (defined(__arm__) || defined(__arm64__) || defined(__aarch64__) || defined(_M_ARM64))
 # define FLUSHCACHE
 #endif
 
@@ -48,6 +60,21 @@
 # endif
 #else
 # undef PORTABLE_BYTECODE_BIGENDIAN
+#endif
+
+/* For an architecture where a load or store of a 64-bit value needs
+   to be 8-byte aligned, define `LOAD_UNALIGNED_UPTR` and
+   `STORE_UNALIGNED_UPTR` to support a read that is 4-byte aligned. */
+#if defined(__sparc_v9__) || defined(__sparcv9)
+FORCEINLINE uptr load_unaligned_uptr(uptr *addr) {
+  return (((uptr)((unsigned *)addr)[0]) << 32) | ((unsigned *)addr)[1];
+}
+FORCEINLINE void store_unaligned_uptr(uptr *addr, uptr val) {
+  ((int *)addr)[0] = (val >> 32);
+  ((int *)addr)[1] = (val & (uptr)0xFFFFFFFF);
+}
+# define LOAD_UNALIGNED_UPTR(addr) load_unaligned_uptr((uptr *)(addr))
+# define STORE_UNALIGNED_UPTR(addr, v) store_unaligned_uptr((uptr *)(addr), v) 
 #endif
 
 /*****************************************/
@@ -164,8 +191,14 @@ typedef int tputsputcchar;
 #endif
 typedef char *memcpy_t;
 struct timespec;
-#ifndef __MINGW32__
-# if defined(_WIN64)
+#ifdef __MINGW32__
+# if defined(__aarch64__)
+#  define HAND_CODED_SETJMP_SIZE 32
+# endif
+#else
+# if defined(_M_ARM64) && !defined(PORTABLE_BYTECODE)
+#  define HAND_CODED_SETJMP_SIZE 32
+# elif defined(_WIN64) && !defined(PORTABLE_BYTECODE)
 #  define HAND_CODED_SETJMP_SIZE 32
 # else
 #  define _setjmp setjmp
@@ -505,3 +538,8 @@ typedef int tputsputcchar;
 
 /* Use "/dev/urandom" everywhere except Windows */
 #define USE_DEV_URANDOM_UUID
+
+#ifndef LOAD_UNALIGNED_UPTR
+# define LOAD_UNALIGNED_UPTR(addr) (*(uptr*)(addr))
+# define STORE_UNALIGNED_UPTR(addr, val) (*(uptr*)(addr) = val)
+#endif

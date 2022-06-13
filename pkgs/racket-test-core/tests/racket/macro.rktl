@@ -1042,6 +1042,15 @@
 (require 'm-check-varref-expand)
 
 ;; ----------------------------------------
+;; Check that expand of reference to rename transformer
+;; applies the transformer
+
+(test #t eval (expand '(let ([x 10])
+                         (let-syntax ([y (make-rename-transformer #'x)])
+                           (variable-reference-constant?
+                            (#%variable-reference y))))))
+
+;; ----------------------------------------
 ;; Check that a module-level binding with 0 marks
 ;;  but lexical context is found correctly with
 ;;  1 and 2 marks (test case by Carl):
@@ -3127,6 +3136,22 @@
 ;; regression test
 
 (test (void) eval '(require (combine-in)))
+
+;; ----------------------------------------
+;; regression test
+
+(err/rt-test (eval '(module m racket/base
+                      (require (for-syntax racket/base))
+                      (define-for-syntax (f)
+                        (values 1 2))
+                      (define-for-syntax (g)
+                        (define x (f))
+                        (displayln 1)
+                        1)
+                      (begin-for-syntax
+                        (g))))
+             exn:fail:contract:arity?
+             #rx"received: 2")
 
 ;; ----------------------------------------
 

@@ -100,6 +100,11 @@
   (ptest "'#hasheq((1 . 2))" (make-hasheq (list (cons 1 2))))
   (ptest "'#hasheqv((1 . 2))" (hasheqv 1 2))
   (ptest "'#hasheqv((1 . 2))" (make-hasheqv (list (cons 1 2))))
+  (ptest "'#hashalw((1 . 2))" (hashalw 1 2))
+  (ptest "'#hashalw((1 . 2))" (make-hashalw (list (cons 1 2))))
+
+  (ptest "#<stencil 5: \"a\" b>" (stencil-vector 5 "a" 'b))
+  (ptest "#<stencil 1: #0=(#0#)>" (stencil-vector 1 (read (open-input-string "#0=(#0#)"))))
 
   (ptest "(mcons 1 2)" (mcons 1 2))
   (ptest "(mcons 1 '())" (mcons 1 null))
@@ -685,7 +690,20 @@
                     "({unquote} #({1 . 2} unquote ()))"
                     "(list (mcons 'unquote '()) (vector (mcons 1 2) 'unquote '()))"
                     "({unquote} #({1 . 2} unquote ()))"))
-    
+
+  (test-print/all (stencil-vector 5 "a" 'b)
+                  "#<stencil 5: \"a\" b>"
+                  "#<stencil 5: a b>"
+                  "#<stencil 5: \"a\" b>"
+                  "#<stencil 5: \"a\" b>"
+                  "#<stencil 5: \"a\" b>")
+  (test-print/all (stencil-vector 5 "a" (read (open-input-string "#0=(#0#)")))
+                  "#<stencil 5: \"a\" #0=(#0#)>"
+                  "#<stencil 5: a #0=(#0#)>"
+                  "#<stencil 5: \"a\" #0=(#0#)>"
+                  "#<stencil 5: \"a\" #0=(#0#)>"
+                  "#<stencil 5: \"a\" #0=(#0#)>")
+
   (void)))
 
 ;; ----------------------------------------

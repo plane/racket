@@ -1360,7 +1360,15 @@
                  (syntax-property wrap-id alias-of 
                                   (cons (syntax-taint (syntax-local-introduce #'self))
                                         (syntax-taint (syntax-local-introduce wrap-id))))]
-                [n-opt (length opt-not-supplieds)])
+                [n-opt (length opt-not-supplieds)]
+                [convert-default-expr (lambda (e)
+                                        ;; default-value expressions get quoted along the way,
+                                        ;; instead of syntax-quoted; in the case of `unsafe-undefined`,
+                                        ;; we need to switch back to a reference that has this module's
+                                        ;; inspector to allow access in an untrusted context
+                                        (if (eq? e 'unsafe-undefined)
+                                            #'unsafe-undefined
+                                            e))])
             (if (free-identifier=? #'new-app (datum->syntax stx '#%app))
                 (parse-app (datum->syntax #f (cons #'new-app stx) stx)
                            (lambda (n)
@@ -1431,20 +1439,20 @@
                                                            (cons (cdar kw-args)
                                                                  (loop (cdr kw-args) (cdr all-kws)))]
                                                           [else
-                                                           (cons (list-ref (car all-kws) 4)
+                                                           (cons (convert-default-expr (list-ref (car all-kws) 4))
                                                                  (loop kw-args (cdr all-kws)))]))
                                                    ;; required arguments:
                                                    #,@(let loop ([i n-req] [args args])
                                                         (if (zero? i)
                                                             null
-                                                            (cons (car args)
+                                                            (cons (convert-default-expr (car args))
                                                                   (loop (sub1 i) (cdr args)))))
                                                    ;; optional arguments:
                                                    #,@(let loop ([opt-not-supplieds opt-not-supplieds] [args (list-tail args n-req)])
                                                         (cond
                                                           [(null? opt-not-supplieds) null]
                                                           [(null? args)
-                                                           (cons (car opt-not-supplieds)
+                                                           (cons (convert-default-expr (car opt-not-supplieds))
                                                                  (loop (cdr opt-not-supplieds) null))]
                                                           [else
                                                            (cons (car args) (loop (cdr opt-not-supplieds) (cdr args)))]))
@@ -2070,12 +2078,13 @@
                                                (define-syntax gen-proc
                                                  (syntax-rules ()
                                                    [(_ extra-arg ...)
-                                                    (lambda (extra-arg ... kws kw-args self . args)
-                                                      ;; Chain to `kw-chaperone', pulling out the self
-                                                      ;; argument, and then putting it back:
-                                                      (define len (length args))
-                                                      (call-with-values
-                                                          (lambda () (apply kw-chaperone extra-arg ... kws kw-args args))
+                                                    (case-lambda
+                                                      [(extra-arg ... kws kw-args self . args)
+                                                       ;; Chain to `kw-chaperone', pulling out the self
+                                                       ;; argument, and then putting it back:
+                                                       (define len (length args))
+                                                       (call-with-values
+                                                        (lambda () (apply kw-chaperone extra-arg ... kws kw-args args))
                                                         (lambda results
                                                           (define r-len (length results))
                                                           (define (list-take l n)
@@ -2088,7 +2097,11 @@
                                                                               (append (list-take results (- skip 2))
                                                                                       (list (list-ref results (sub1 skip))
                                                                                             self)
-                                                                                      (list-tail results skip))))))))]))
+                                                                                      (list-tail results skip)))))))]
+                                                      ;; This extra case shoule never be reached; it's included
+                                                      ;; to allow the chaperone when `proc` accepts 0 arguments, even though
+                                                      ;; proc will never be called with 0 arguments
+                                                      [args (void)])]))
                                                (if self-arg?
                                                    (gen-proc proc-self)
                                                    (gen-proc)))))))])

@@ -969,9 +969,15 @@
             (boolean? obj)
             (null? obj)
             (eqv? obj "")
+            (eqv? obj (string->immutable-string ""))
             (eqv? obj '#())
+            (eqv? obj (vector->immutable-vector '#()))
             (eqv? obj '#vu8())
+            (eqv? obj (bytevector->immutable-bytevector '#vu8()))
             (eqv? obj '#vfx())
+            ; no null-immutable-fxvector
+            (eqv? obj '#vfl())
+            ; no null-immutable-flvector
             (eq? obj (void))
             (eof-object? obj)
             (bwp-object? obj)
@@ -1462,6 +1468,10 @@
                                   ;; could send us into a loop for a `letrec`
                                   ;; binding. But use the prelex as a summary
                                   ;; or a way to tie a loop:
+                                  (preinfo->single-valued preinfo x)]
+                                 [(call ,preinfo0 ,pr (case-lambda ,preinfo ,cl* ...) ,e ...)
+                                  (or (eq? (primref-name pr) 'make-wrapper-procedure)
+                                      (eq? (primref-name pr) 'make-arity-wrapper-procedure))
                                   (preinfo->single-valued preinfo x)]
                                  [else #f])))]
                        ;; Recognize call to a loop, and use the loop's prelex in that case:
@@ -3614,14 +3624,14 @@
                                                                        (f (ctrcd-ctprcd ctprcd) prtd pprtd vars))]
                                                                     [else
                                                                      (let ([new-vars (map (lambda (x) (cp0-make-temp #f))
-                                                                                       (csv7:record-type-field-indices prtd))])
+                                                                                       ($record-type-field-indices prtd))])
                                                                        (build-lambda new-vars
                                                                          `(call ,(app-preinfo ctxt) ,(go (< level 3) rtd rtd-e ctxt)
                                                                             ,(map build-ref (append new-vars vars))
                                                                             ...)))])))]
                                                            [else
                                                             (let ([new-vars (map (lambda (x) (cp0-make-temp #f))
-                                                                              (csv7:record-type-field-indices prtd))])
+                                                                              ($record-type-field-indices prtd))])
                                                               (build-lambda new-vars
                                                                 `(call ,(app-preinfo ctxt) ,(go (< level 3) rtd rtd-e ctxt)
                                                                    ,(map build-ref (append new-vars vars)) ...)))])

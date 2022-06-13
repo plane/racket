@@ -809,6 +809,29 @@
           (hello 1 #:key 'hi))))
 
 ;; ----------------------------------------
+;; Regression test to make sure an internal chaperone is not disallowed
+;; due to a `prop:procedure` method whose implementation accepts 0 arguments
+;; (but it can never get called that way)
+
+(let ()
+  (struct function ()
+    #:property prop:procedure
+    (make-keyword-procedure
+     ;; will only be called with at least 1 argument for "self"
+     (λ (kws kw-vs . vs)
+       'whatever)))
+
+  (define (chap proc)
+    (chaperone-procedure proc
+                         (make-keyword-procedure
+                          (lambda (kw kw-vs . xs)
+                            xs))))
+
+  (test #t procedure? (function))
+  (test #t procedure? (chap (function)))
+  (test #t procedure? (chap (chap (function)))))
+
+;; ----------------------------------------
 
 (module kw-defns racket/base
   (provide (all-defined-out))
@@ -869,6 +892,15 @@
 (test 'foo
       object-name
       (procedure-rename (make-keyword-procedure (lambda (ks vs x . r) void)) 'foo))
+
+;; ----------------------------------------
+
+(test #t 'primitive-arity
+      (for/and ([v (in-list (list cons car make-struct-type eval values call/cc))])
+        (or (not (primitive? v))
+            (let ([a (primitive-result-arity v)])
+              (or (exact-nonnegative-integer? a)
+                  (arity-at-least? a))))))
 
 ;; ----------------------------------------
 

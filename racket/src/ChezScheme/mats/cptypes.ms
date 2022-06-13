@@ -556,6 +556,36 @@
                                `(let ()
                                   ,preamble
                                   (lambda (x) (when (,(car t) x) #t)))))
+                        (or (not check-self?)
+                            (cptypes-equivalent-expansion?
+                              `(let ()
+                                 ,preamble
+                                 (lambda (x) (when (and (,(car l) x) (,(car t) x)) (,(car l) x))))
+                              `(let ()
+                                 ,preamble
+                                 (lambda (x) (when (and (,(car l) x) (,(car t) x)) #t))))
+                            (cptypes-equivalent-expansion?
+                              `(let ()
+                                 ,preamble
+                                 (lambda (x) (when (and (,(car t) x) (,(car l) x)) (,(car l) x))))
+                              `(let ()
+                                 ,preamble
+                                 (lambda (x) (when (and (,(car t) x) (,(car l) x)) #t))))
+                            (cptypes-equivalent-expansion?
+                              `(let ()
+                                 ,preamble
+                                 (lambda (x) (when (or (,(car l) x) (,(car t) x)) (,(car t) x))))
+                              `(let ()
+                                 ,preamble
+                                 (lambda (x) (when (or (,(car l) x) (,(car t) x)) #t))))
+                            (cptypes-equivalent-expansion?
+                              `(let ()
+                                 ,preamble
+                                 (lambda (x) (when (or (,(car l) x) (,(car t) x)) (,(car t) x))))
+                              `(let ()
+                                 ,preamble
+                                 (lambda (x) (when (or (,(car t) x) (,(car l) x)) #t))))
+                            )
                         (loop (cdr t)))))
              (loop (cdr l))))))
 
@@ -616,12 +646,12 @@
   (test-disjoint/preamble/self preamble #f l))
 
 (mat cptypes-type-implies?
-  (test-chain '((lambda (x) (eq? x 0)) fixnum? #;exact-integer? real? number?))
-  (test-chain* '((lambda (x) (or (eq? x 0) (eq? x 10))) fixnum? #;exact-integer? real? number?))
+  (test-chain '((lambda (x) (eq? x 0)) fixnum? (lambda (x) (and (integer? x) (exact? x))) real? number?))
+  (test-chain* '((lambda (x) (or (eq? x 0) (eq? x 10))) fixnum? (lambda (x) (and (integer? x) (exact? x))) real? number?))
   (test-chain* '(fixnum? integer? real?))
   (test-chain* '(fixnum? exact? number?)) ; exact? may raise an error
   (test-chain* '(bignum? exact? number?)) ; exact? may raise an error
-  (test-chain '((lambda (x) (eqv? x (expt 256 100))) bignum? real? number?))
+  (test-chain '((lambda (x) (eqv? x (expt 256 100))) bignum? integer? real? number?))
   (test-chain '((lambda (x) (eqv? 0.0 x)) flonum? real? number?))
   (test-chain* '((lambda (x) (or (eqv? x 0.0) (eqv? x 3.14))) flonum? real? number?))
   (test-chain* '((lambda (x) (or (eq? x 0) (eqv? x 3.14))) real? number?))
@@ -642,6 +672,8 @@
   (test-disjoint '(pair? box? fixnum? flonum? (lambda (x) (eq? #t x))))
   (test-disjoint '((lambda (x) (eq? x 0)) (lambda (x) (eq? x 1)) flonum?))
   (test-disjoint '((lambda (x) (eqv? x 0.0)) (lambda (x) (eqv? x 1.0)) fixnum?))
+  (test-disjoint '(exact? inexact?))
+  (test-disjoint '(integer? ratnum?))
   (test-disjoint '((lambda (x) (eq? x 'banana)) (lambda (x) (eq? x 'apple))))
   (test-disjoint* '(list? record? vector?))
   (not (test-disjoint* '(list? null?)))
@@ -1313,12 +1345,6 @@
     '(lambda (p) (define x (get-u8 p)) (unless (fixnum? x) (eq? x (eof-object))))
     '(lambda (p) (define x (get-u8 p)) (unless (fixnum? x) #t)))
   (cptypes-equivalent-expansion?
-    '(lambda (x) (when (or (fixnum? x) (bignum? x)) (or (fixnum? x) (bignum? x))))
-    '(lambda (x) (when (or (fixnum? x) (bignum? x)) #t)))
-  (cptypes-equivalent-expansion?
-    '(lambda (x) (when (or (fixnum? x) (bignum? x)) (or (bignum? x) (fixnum? x))))
-    '(lambda (x) (when (or (fixnum? x) (bignum? x)) #t)))
-  (cptypes-equivalent-expansion?
     '(lambda (x) (unless (char? x) (char? x)))
     '(lambda (x) (unless (char? x) #f)))
   (cptypes-equivalent-expansion?
@@ -1342,6 +1368,84 @@
   (cptypes-equivalent-expansion?
     '(lambda (x) (when (eq? x #\A) (unless (char? x) 1)))
     '(lambda (x) (when (eq? x #\A) (unless (char? x) 2))))
+)
+
+(mat exact-integer
+  (cptypes-equivalent-expansion?
+    '(lambda (x) (when (or (fixnum? x) (bignum? x)) (or (fixnum? x) (bignum? x))))
+    '(lambda (x) (when (or (fixnum? x) (bignum? x)) #t)))
+  (cptypes-equivalent-expansion?
+    '(lambda (x) (when (or (fixnum? x) (bignum? x)) (or (bignum? x) (fixnum? x))))
+    '(lambda (x) (when (or (fixnum? x) (bignum? x)) #t)))
+  (cptypes-equivalent-expansion?
+    '(lambda (x) (when (or (fixnum? x) (bignum? x)) (and (integer? x) (exact? x))))
+    '(lambda (x) (when (or (fixnum? x) (bignum? x)) #t)))
+  (cptypes-equivalent-expansion?
+    '(lambda (x) (when (and (integer? x) (exact? x)) (or (fixnum? x) (bignum? x))))
+    '(lambda (x) (when (and (integer? x) (exact? x)) #t)))
+  (cptypes-equivalent-expansion?
+    '(lambda (x) (when (or (fixnum? x) (eq? x 7)) (fixnum? x)))
+    '(lambda (x) (when (or (fixnum? x) (eq? x 7)) #t)))
+  (cptypes-equivalent-expansion?
+    '(lambda (x) (when (or (eq? x 7) (fixnum? x)) (fixnum? x)))
+    '(lambda (x) (when (or (eq? x 7) (fixnum? x)) #t)))
+  (cptypes-equivalent-expansion?
+    '(lambda (x) (when (and (fixnum? x) (eq? x 7)) (eq? x 7)))
+    '(lambda (x) (when (and (fixnum? x) (eq? x 7)) #t)))
+  (cptypes-equivalent-expansion?
+    '(lambda (x) (when (and (eq? x 7) (fixnum? x)) (eq? x 7)))
+    '(lambda (x) (when (and (eq? x 7) (fixnum? x)) #t)))
+  ; check that non-fixnum? is not lost
+  (cptypes-equivalent-expansion?
+    '(lambda (x) (unless (fixnum? x) (unless (fixnum? x) x)))
+    '(lambda (x) (unless (fixnum? x) x)))
+  (cptypes-equivalent-expansion?
+    '(lambda (x) (when (real? x) (unless (fixnum? x) (unless (fixnum? x) x))))
+    '(lambda (x) (when (real? x) (unless (fixnum? x) x))))
+  (cptypes-equivalent-expansion?
+    '(lambda (x) (unless (fixnum? x) (when (real? x) (unless (fixnum? x) x))))
+    '(lambda (x) (unless (fixnum? x) (when (real? x) x))))
+)
+
+(mat bitwise
+  (cptypes-equivalent-expansion?
+    '(lambda (x) (when (fixnum? x) (bitwise-and x 7)))
+    '(lambda (x) (when (fixnum? x) (fxand x 7))))
+  (cptypes-equivalent-expansion?
+    '(lambda (x) (when (fixnum? x) (bitwise-ior x 7)))
+    '(lambda (x) (when (fixnum? x) (fxior x 7))))
+  (cptypes-equivalent-expansion?
+    '(lambda (x) (when (fixnum? x) (bitwise-xor x 7)))
+    '(lambda (x) (when (fixnum? x) (fxxor x 7))))
+  (cptypes-equivalent-expansion?
+    '(lambda (x) (when (fixnum? x) (bitwise-not x)))
+    '(lambda (x) (when (fixnum? x) (fxnot x))))
+  (cptypes-equivalent-expansion?
+    '(lambda (x) (fixnum? (bitwise-and x 7)))
+    '(lambda (x) (bitwise-and x 7) #t))
+  (not (cptypes-equivalent-expansion?
+         '(lambda (x) (fixnum? (bitwise-and x -7)))
+         '(lambda (x) (bitwise-and x -7) #t)))
+  (cptypes-equivalent-expansion?
+    '(lambda (x) (fixnum? (bitwise-ior x -7)))
+    '(lambda (x) (bitwise-ior x -7) #t))
+  (not (cptypes-equivalent-expansion?
+         '(lambda (x) (fixnum? (bitwise-ior x 7)))
+         '(lambda (x) (bitwise-ior x 7) #t)))
+  (cptypes-equivalent-expansion?
+    '(lambda (f x) (when (fixnum? x) (bitwise-and (f) x)))
+    '(lambda (f x) (when (fixnum? x)
+                     (let ([y (f)])
+                       (if (#2%fixnum? y) ;the specialization uses #2%fixnum?
+                           (fxand y x)
+                           (bitwise-and y x))))))
+  (cptypes-equivalent-expansion?
+    '(lambda (f x) (when (fixnum? x) (bitwise-and x (f))))
+    '(lambda (f x) (when (fixnum? x)
+                     (let ([y (f)])
+                       (if (#2%fixnum? y) ;the specialization uses #2%fixnum?
+                           (fxand x y)
+                           (bitwise-and x y))))))
 )
 
 (mat cptypes-unreachable
