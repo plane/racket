@@ -17,9 +17,8 @@ tend to use the names of Unix programs, which are much shorter than
 Racket's long names.
 
 The @racketmodname[zuo/base] language includes most of the bindings
-from @racketmodname[zuo], but not the ones that are from
-@racketmodname[zuo/cmdline], @racketmodname[zuo/build],
-@racketmodname[zuo/shell], @racketmodname[zuo/thread],
+from @racketmodname[zuo], but not the ones from @racketmodname[zuo/cmdline],
+@racketmodname[zuo/build], @racketmodname[zuo/shell], @racketmodname[zuo/thread],
 @racketmodname[zuo/glob], or @racketmodname[zuo/config].
 
 @section{Syntax and Evaluation Model}
@@ -54,7 +53,7 @@ modules that import it. Variables and macros that are not provided are
 completely inaccessible outside of the module.
 
 There are no @defterm{phases} in the sense of Racket. When
-@racketmodname[zuo] macro expansion encountered an import, it makes
+@racketmodname[zuo] macro expansion encounters an import, it makes
 all of the imported module's exports immediately available for use in
 macro implementations, both variables and macros. For example, an
 imported macro might be used both to implement a macro body and in
@@ -511,7 +510,7 @@ hashing, but they're called that for similarly to Racket. A hash table
 maps symbols to other values, and updating a hash table produces a new
 hash table (which, internally, may share with the original).
 
-Hash table print in a way analogous to Racket, but there is no reader
+Hash tables print in a way analogous to Racket, but there is no reader
 support to convert the textual form back into a hash table value.
 
 @deftogether[(
@@ -566,8 +565,8 @@ checks only whether the immediately enclosing prompt has the given tag.}
 
 @section{Paths}
 
-A @deftech{path string} is is a @tech{string} that is not non-empty
-and to contains no nul bytes.
+A @deftech{path string} is a @tech{string} that is not empty
+and contains no null bytes.
 
 @defproc[(path-string? [v any/c]) boolean?]{
 
@@ -1150,14 +1149,20 @@ with an executable name.}
 
 @section{Filesystem}
 
-@defproc[(stat [name path-string?] [follow-links? any/c #t]) (or/c hash? #f)]{
+@defproc[(stat [name path-string?]
+               [follow-links? any/c #t]
+               [false-on-error? any/c #f])
+         (or/c hash? #f)]{
 
 Returns information about the file, directory, or link referenced by
 @racket[name]. If @racket[follow-links?] is @racket[#f], then when
 @racket[name] refers to a link, information is reported about the
 link; otherwise, information is reported about the target of a link.
 
-If no such file, directory, or link exists, the result is @racket[#f].
+If @racket[name] is a valid path but such file, directory, or link exists,
+the result is @racket[#f]. If accessing @racket[name] encounters an error
+(e.g., @racket[name] uses a file as a directory or permission is denied),
+then @racket[#f] is reported instead of an error if @racket[false-on-error?].
 Otherwise, the hash table has similar keys and values as
 @realracket[file-or-directory-stat] from @racketmodname[racket], but
 with only certain keys per platform:
@@ -1257,7 +1262,9 @@ a link to a directory),.}
 )]{
 
 Uses @racket[stat] to check for a file, directory, or link,
-respectively.}
+respectively. If @racket[stat] encounters an error (e.g., access
+permission), then the file, directory, or link is treated as
+non-existent.}
 
 
 @section{Run Time Configuration}

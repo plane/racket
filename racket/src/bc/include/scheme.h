@@ -731,7 +731,7 @@ typedef struct Scheme_Offset_Cptr
 #define scheme_ispunc(x) ((scheme_uchar_find(scheme_uchar_table, x)) & 0x4)
 #define scheme_iscontrol(x) ((scheme_uchar_find(scheme_uchar_table, x)) & 0x8)
 #define scheme_isspace(x) ((scheme_uchar_find(scheme_uchar_table, x)) & SCHEME_ISSPACE_BIT)
-/* #define scheme_isSOMETHING(x) ((scheme_uchar_find(scheme_uchar_table, x)) & 0x20) - not yet used */
+#define scheme_isextpict(x) ((scheme_uchar_find(scheme_uchar_table, x)) & 0x20)
 #define scheme_isdigit(x) ((scheme_uchar_find(scheme_uchar_table, x)) & 0x40)
 #define scheme_isalpha(x) ((scheme_uchar_find(scheme_uchar_table, x)) & 0x80)
 #define scheme_istitle(x) ((scheme_uchar_find(scheme_uchar_table, x)) & 0x100)
@@ -753,6 +753,9 @@ typedef struct Scheme_Offset_Cptr
 
 #define scheme_general_category(x) ((scheme_uchar_find(scheme_uchar_cats_table, x)) & 0x1F)
 /* Note: 3 bits available in the cats table */
+
+#define scheme_grapheme_cluster_break(x) (scheme_uchar_find(scheme_uchar_graphbreaks_table, x))
+#define scheme_isextend(x) ((scheme_grapheme_cluster_break(x)) == MZ_GRAPHBREAK_EXTEND)
 
 /*========================================================================*/
 /*                          procedure values                              */
@@ -1469,6 +1472,11 @@ typedef void (*Scheme_Need_Wakeup_Output_Fun)(Scheme_Output_Port *, void *);
 typedef Scheme_Object *(*Scheme_Write_Special_Evt_Fun)(Scheme_Output_Port *, Scheme_Object *);
 typedef int (*Scheme_Write_Special_Fun)(Scheme_Output_Port *, Scheme_Object *,
 					int nonblock);
+typedef struct Scheme_GrCl_State
+{
+  int state;
+  intptr_t pending_chars;
+} Scheme_GrCl_State;
 
 struct Scheme_Port
 {
@@ -1477,11 +1485,14 @@ struct Scheme_Port
   intptr_t position, readpos, lineNumber, charsSinceNewline;
   intptr_t column, oldColumn; /* column tracking with one tab/newline ungetc */
   int utf8state;
+  Scheme_GrCl_State grcl_state;
   Scheme_Location_Fun location_fun;
   Scheme_Count_Lines_Fun count_lines_fun;
   Scheme_Buffer_Mode_Fun buffer_mode_fun;
   Scheme_Object *position_redirect; /* for `file-position' */
 };
+
+#define SCHEME_UNGET_BUFFER_SIZE 24
 
 struct Scheme_Input_Port
 {
@@ -1503,7 +1514,7 @@ struct Scheme_Input_Port
   Scheme_Object *name;
   Scheme_Object *peeked_read, *peeked_write;
   Scheme_Object *progress_evt, *input_lock, *input_giveup, *input_extras, *input_extras_ready;
-  unsigned char ungotten[24];
+  unsigned char ungotten[SCHEME_UNGET_BUFFER_SIZE];
   int ungotten_count;
   Scheme_Object *special, *ungotten_special;
   Scheme_Object *unless, *unless_cache;

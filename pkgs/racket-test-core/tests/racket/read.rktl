@@ -457,6 +457,8 @@
 (err/rt-test (readstr "#0=#hash#0#") exn:fail:read?)
 (err/rt-test (readstr "#0=#hash(#0#)") exn:fail:read?)
 (err/rt-test (readstr "#hash([1 . 2))") exn:fail:read?)
+(err/rt-test (readstr "#hash([1 . ;; a\n))") exn:fail:read?)
+(err/rt-test (readstr "#hash([;; a\n . 1))") exn:fail:read?)
 
 (test #t eq? (readstr "#hash()") (hash))
 (test #t eq? (readstr "#hasheq()") (hasheq))
@@ -505,6 +507,20 @@
 (let ([t (readstr "#0=#hash((#0# . 17))")])
   ;; Don't look for t, because that's a hash on a circular object!
   (test-ht t 1 #f 'none #f))
+(test-ht (readstr "#hash( [ 1 . 2 ] )")
+         1 #f 1 2)
+(test-ht (readstr "#hash( ;abc\n[ 1 . 2 ] )")
+         1 #f 1 2)
+(test-ht (readstr "#hash( [ ;abc\n1 . 2 ] )")
+         1 #f 1 2)
+(test-ht (readstr "#hash( [ 1;abc\n. 2 ] )")
+         1 #f 1 2)
+(test-ht (readstr "#hash( [ 1 .;abc\n2 ] )")
+         1 #f 1 2)
+(test-ht (readstr "#hash( [ 1 . 2;abc\n] )")
+         1 #f 1 2)
+(test-ht (readstr "#hash( [ 1 . 2 ];abc\n)")
+         1 #f 1 2)
 
 (define (test-write-ht writer t . strings)
   (let ([o (open-output-string)])
@@ -1039,7 +1055,8 @@
 (require racket/flonum
          racket/fixnum)
 
-(define (run-comment-special)
+(define (run-comment-special [special-comment special-comment]
+                             #:skip-num? [skip-num? #f])
   (test (list 5) read (make-p (list #"(" special-comment #"5)") (lambda (x) 1) void))
   (test (list 5) read (make-p (list #"(5" special-comment #")") (lambda (x) 1) void))
   (test (cons 1 5) read (make-p (list #"(1 . " special-comment #"5)") (lambda (x) 1) void))
@@ -1050,14 +1067,51 @@
   (test (list 2 1 5) read (make-p (list #"(1 . " special-comment #"2 . 5)") (lambda (x) 1) void))
   (test (list 2 1 5) read (make-p (list #"(1 . 2 " special-comment #" . 5)") (lambda (x) 1) void))
   (test (vector 1 2 5) read (make-p (list #"#(1 2 " special-comment #"5)") (lambda (x) 1) void))
-  (test (flvector 1.0) read (make-p (list #"#fl(1.0 " special-comment #")") (lambda (x) 1) void))
-  (test (fxvector 1) read (make-p (list #"#fx(1 " special-comment #")") (lambda (x) 1) void))
+  (unless skip-num?
+    (test (flvector 1.0) read (make-p (list #"#fl(1.0 " special-comment #")") (lambda (x) 1) void))
+    (test (fxvector 1) read (make-p (list #"#fx(1 " special-comment #")") (lambda (x) 1) void)))
+  (test (hash 1 'a) read (make-p (list #"#hash(" special-comment #"(1 . a))") (lambda (x) 1) void))
+  (test (hash 1 'a) read (make-p (list #"#hash((" special-comment #"1 . a))") (lambda (x) 1) void))
+  (test (hash 1 'a) read (make-p (list #"#hash((1 " special-comment #". a))") (lambda (x) 1) void))
+  (test (hash 1 'a) read (make-p (list #"#hash((1 ." special-comment #" a))") (lambda (x) 1) void))
+  (test (hash 1 'a) read (make-p (list #"#hash((1 . a" special-comment #"))") (lambda (x) 1) void))
+  (test (hash 1 'a) read (make-p (list #"#hash((1 . a)" special-comment #")") (lambda (x) 1) void))
   (err/rt-test (read (make-p (list #"#fl(1.0 " a-special #")") (lambda (x) 1) void)) exn:fail:read?)
   (err/rt-test (read (make-p (list #"#fx(1 " a-special #")") (lambda (x) 1) void)) exn:fail:read?))
 (run-comment-special)
 (parameterize ([current-readtable (make-readtable #f)])
   (run-comment-special))
-  
+(parameterize ([current-readtable (make-readtable #f
+                                                  #\* 'terminating-macro (lambda args
+                                                                           (make-special-comment #f)))])
+  (run-comment-special #"*"))
+(parameterize ([current-readtable (make-readtable #f
+                                                  #\* 'dispatch-macro (lambda args
+                                                                        (make-special-comment #f)))])
+  (run-comment-special #" #* " #:skip-num? #t))
+
+(let ()
+  ;; check that minimal characters are read to determine that wrong
+  ;; characters won't produce a comment via the readtable
+  (define (check-consumed s n [read read])
+    (define i (open-input-bytes s))
+    (err/rt-test/once (read i) exn:fail:read?)
+    (test n file-position i))
+  (check-consumed #"(1 . x yzq)" 8)
+  (parameterize ([current-readtable (make-readtable #f
+                                                    #\y 'terminating-macro (lambda (ch in . args)
+                                                                             (read-char in)))])
+    (check-consumed #"(1 . x yzq)" 9))
+  (check-consumed #"(1 . x #yzq)" 8)
+  (parameterize ([current-readtable (make-readtable #f
+                                                    #\y 'dispatch-macro (lambda (ch in . args)
+                                                                          (read-char in)))])
+    (check-consumed #"(1 . x #yzq)" 10))
+  (check-consumed #"#hash(yzq)" 7)
+  (check-consumed #"#hash(#yzq)" 7)
+  (check-consumed #"yzq #lang" 1 read-language)
+  (check-consumed #"#yzq #lang" 2 read-language))
+
 ;; Test read-char-or-special:
 (let ([p (make-p (list #"x" a-special #"y") (lambda (x) 5) void)])
   (test #\x peek-char-or-special p)

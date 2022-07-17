@@ -215,7 +215,7 @@ Detailed instructions:
     The first step of `make` is to build `bin/zuo` to run build
     scripts. If you need to select the C compiler to build `bin/zuo`
     (which is a single C file that needs only system headers), then
-    supply `HOSTCC=<compiler>` as an argument to `make`.
+    supply `CC_FOR_BUILD=<compiler>` as an argument to `make`.
 
  4. Run `make install`.
 
@@ -294,10 +294,22 @@ After installing developer tools, follow the Unix instructions above,
 but note the following:
 
  * If you are building from a source distribution (as opposed to a Git
-   repository checkout), then most likely "racket-lib" is already
-   included and installed as part of the the distribution, but without
-   dependencies of "racket-lib" that are specific to Mac OS. In that
-   case, use
+   repository checkout), then beware that a regular/full Racket
+   distribution will not build correctly. A regular source
+   distribution is intended for Unix platforms, and it does not
+   include native libraries that are needed on Mac OS. You should
+   start with a source distribution that is labelled "Minimal Racket",
+   instead, and then finish with
+
+     raco pkg update --auto racket-lib
+     raco pkg install -i main-distribution
+
+ * If you are building from a minimal Racket source distribution (as
+   opposed to a Git repository checkout or a regular/full Racket
+   source distribution for Unix), then "racket-lib" is already
+   included and installed as part of the the distribution, but still
+   without dependencies of "racket-lib" that are specific to Mac OS.
+   In that case, after following build steps for Unix, use
 
       raco pkg update --auto racket-lib
 
@@ -340,12 +352,13 @@ but note the following:
  Compiling for Windows
 ========================================================================
 
-For information on setting up a command-line build environment with
-Microsoft Visual Studio, see the instructions in "worksp\README.txt".
+First, see "Building from a Source Distribution" in "worksp\README.txt".
 
-With the command-line environment set up, the build steps are
-essentially the same as for Unix, but with `winfig.bat` in place of
-`configure` and `nmake` in place of `make`:
+For information on setting up a command-line build environment with
+Microsoft Visual Studio, see detailed instructions in
+"worksp\README.txt". With the command-line environment set up, the
+build steps are essentially the same as for Unix, but with
+`winfig.bat` in place of `configure` and `nmake` in place of `make`:
 
    mkdir build
    cd build
@@ -393,7 +406,7 @@ For Racket CS, an additional flag is required:
  
    Supplying `--enable-scheme=DIR` is also supported, where DIR is a
    path that has a "ChezScheme" directory where Chez Scheme is built
-   for the host system (but not necessarily installed).
+   for the build system (but not necessarily installed).
 
 The `--enable-racket=RACKET` and `--enable-scheme=SCHEME` flags are
 allowed for non-cross builds, too:

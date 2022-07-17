@@ -1135,14 +1135,13 @@
             (mutex-acquire m)
             (set-box! ready 'finish)
             ;; Wait for thread to become inactive again
+            (pause-until (lambda () (eq? 'done (unbox ready))))
             (pause-until (lambda () (= 1 (#%$top-level-value '$active-threads))))
             ;; Get thread's size, which shouldn't include bstr
             (let ([post-sizes (compute-size-increments (list th))])
               (mutex-release m)
               ;; Wait for thread to exit
-              (let ()
-                (define $threads (foreign-procedure "(cs)threads" () scheme-object))
-                (pause-until (lambda () (= 1 (length ($threads))))))
+              (thread-join th)
               ;; Make sure `compute-size-increments` doesn't crash on a
               ;; terminated thread:
               (compute-size-increments (list th))
@@ -2483,7 +2482,7 @@
       (cost-center-allocation-count cc)))
 
   (let ([x (fx+ 3 (random 10))])
-    ((lambda (count) ; range for padding on 32-bit and to accomadate 64-bit words
+    ((lambda (count) ; range for padding on 32-bit and to accommodate 64-bit words
        (<= (fxsll (fx+ x 1) 2) count (fxsll (fx+ x 2) 3)))
      (let ([cc (make-cost-center)])
        (with-cost-center cc

@@ -172,7 +172,7 @@ The @racketmodname[zuo] language is built on top of
 @racket[cond], and @racket[let*], because working without those is
 especially tedious. Then there's an internal ``stitcher'' language
 that is the only use of the ``looper'' language; it adds its own
-@racket[lambda] (which implicit @racket[begin]) @racket[let] (with
+@racket[lambda] (with implicit @racket[begin]) @racket[let] (with
 multiple clauses), @racket[let*], @racket[letrec] (with multiple
 binding clauses), @racket[and], @racket[or], @racket[when],
 @racket[unless], and a kind of @racket[define] and @racket[include].
@@ -307,7 +307,7 @@ specific choices about how to work with paths:
        /home/racket/scripts/go.zuo}, then @racket[quote-module-path]
        reports an absolute path. Similarly, with
        @racketmodname[zuo/build], when you use a relative path to
-       refer to a dependency, then information about the dependency
+       refer to a dependency, information about the dependency
        can be recorded in relative form, but referring to a dependency
        with an absolute path means that information is recorded with
        an absolute path (even if that could be made relative to the

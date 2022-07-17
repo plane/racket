@@ -1600,10 +1600,8 @@ ptr GCENTRY(ptr tc, ptr count_roots_ls) {
 
   /* rebuild rtds_with_counts lists, dropping otherwise inaccessible rtds */
     { IGEN g, newg; ptr ls, p; seginfo *si;
-      int count = 0;
       for (g = MAX_CG; g >= 0; g -= 1) {
         for (ls = S_G.rtds_with_counts[g], S_G.rtds_with_counts[g] = Snil; ls != Snil; ls = Scdr(ls)) {
-          count++;
           p = Scar(ls);
           si = SegInfo(ptr_get_segment(p));
           if (!si->old_space || new_marked(si, p)) {
@@ -2035,7 +2033,7 @@ static iptr sweep_generation_pass(thread_gc *tgc) {
     send_and_receive_remote_sweeps(tgc);
 
     /* Waiting until sweeping doesn't trigger a change reduces the
-       chance that an ephemeron must be reigistered as a
+       chance that an ephemeron must be registered as a
        segment-specific trigger or gets triggered for recheck, but
        it doesn't change the worst-case complexity. */
     if (tgc->sweep_change == SWEEP_NO_CHANGE)
@@ -3452,7 +3450,7 @@ ptr S_count_size_increments(ptr ls, IGEN generation) {
   ptr tc = get_thread_context();
   thread_gc *tgc = THREAD_GC(tc);
 
-  tc_mutex_acquire();
+  /* caller acquires mutex and ensures that this is the only thread */
 
   init_measure(tgc, 0, generation);
 
@@ -3499,8 +3497,6 @@ ptr S_count_size_increments(ptr ls, IGEN generation) {
   }
 
   finish_measure();
-
-  tc_mutex_release();
 
   return totals;
 }
