@@ -342,9 +342,10 @@
     #f]))
 
 (define (not-a-procedure f)
-  (raise-arguments-error 'application
-                         "not a procedure;\n expected a procedure that can be applied to arguments"
-                         "given" f))
+  (lambda args
+    (raise-arguments-error 'application
+                           "not a procedure;\n expected a procedure that can be applied to arguments"
+                           "given" f)))
 
 (define (wrong-arity-wrapper f)
   (lambda args
@@ -639,21 +640,24 @@
 ;; ----------------------------------------
 
 (define (make-jit-procedure force mask name realm)
-  (letrec ([p (make-wrapper-procedure
-               (lambda args
-                 (let ([f (force)])
-                   (with-interrupts-disabled
-                    ;; atomic with respect to Racket threads,
-                    (let ([name (wrapper-procedure-data p)])
-                      (unless (#%box? name)
-                        (set-wrapper-procedure! p f)
-                        (set-wrapper-procedure-data! p (box name)))))
-                   (apply p args)))
-               mask
-               (if realm
-                   (vector name realm)
-                   name))])
-    p))
+  (let ([data (if realm
+                  (vector name realm #f)
+                  name)])
+    (letrec ([p (make-wrapper-procedure
+                 (lambda args
+                   (let ([f (force)])
+                     (with-interrupts-disabled
+                      ;; atomic with respect to Racket threads
+                      (let ([name (wrapper-procedure-data p)])
+                        (unless (#%box? name)
+                          (set-wrapper-procedure! p f)
+                          (set-wrapper-procedure-data! p (box name)))))
+                     (apply p args)))
+                 mask
+                 data)])
+      (when realm
+        (vector-set! data 2 (wrapper-procedure-procedure p)))
+      p)))
 
 ;; A boxed `name` means a method
 (define (make-interp-procedure proc mask name+realm)

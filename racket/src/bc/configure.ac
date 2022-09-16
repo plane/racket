@@ -48,6 +48,7 @@ AC_ARG_ENABLE(lt,      [  --enable-lt=<prog>      use <prog> instead of libtool;
 m4_include(../ac/instlib_arg.m4)
 
 AC_ARG_ENABLE(libffi,  [  --enable-libffi         use installed libffi (enabled by default for Unix)], , enable_libffi=default)
+m4_include(../ac/iconv_arg.m4)
 m4_include(../ac/curses_arg.m4)
 
 m4_include(../ac/sdk_arg.m4)
@@ -557,7 +558,7 @@ case "$host_os" in
       X_PRE_LIBS=""
     fi
     ;;
-  linux*)
+  linux*|gnu*)
     LIBS="$LIBS -ldl -lm -lrt -rdynamic"
     DYN_CFLAGS="-fPIC"
     curses_portable_link="/usr/lib/${host_cpu}-${host_os}/libncurses.a /usr/lib/${host_cpu}-${host_os}/libtermcap.a"
@@ -1478,6 +1479,7 @@ AC_SUBST(LIBFFI_CONFIGURE_ARGS)
 AC_SUBST(RKTIO_CONFIGURE_ARGS)
 
 AC_SUBST(CC_FOR_BUILD)
+AC_SUBST(CFLAGS_FOR_BUILD)
 AC_SUBST(upsrcdir)
 
 makefiles="Makefile"

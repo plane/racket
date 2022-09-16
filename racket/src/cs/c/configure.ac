@@ -15,7 +15,7 @@ AC_DISABLE_OPTION_CHECKING
 AC_ARG_ENABLE(shared,     [  --enable-shared         create shared libraries (not currently supported)])
 AC_ARG_ENABLE(standalone, [  --enable-standalone     create a standalone shared library])
 AC_ARG_ENABLE(pthread,    [  --enable-pthread        link with pthreads (usually auto-enabled if needed)])
-AC_ARG_ENABLE(iconv,      [  --enable-iconv          use iconv (usually auto-enabled)])
+m4_include(../ac/iconv_arg.m4)
 m4_include(../ac/curses_arg.m4)
 AC_ARG_ENABLE(wpo,        [  --enable-wpo            agressively optimize Racket core (enabled by default)])
 AC_ARG_ENABLE(compress,   [  --enable-compress       compress compiled code (enabled by default)])
@@ -148,6 +148,7 @@ use_flag_pthread=yes
 use_flag_posix_pthread=no
 
 OSX="f"
+SIGNED_EXE="f"
 MINGW="f"
 CONFIGURE_RACKET_SO_COMPILE=""
 COMPRESS_COMP=""
@@ -272,8 +273,15 @@ case "$host_os" in
     ;;
   irix*)
     ;;
-  linux*)
-    MACH_OS=le
+  linux*|gnu*)
+    case "$host_os" in
+      linux*)
+        MACH_OS=le
+        ;;
+      *)
+        MACH_OS=gnu # Hurd
+        ;;
+    esac
     case "$host_os" in
       *linux-android*)
         ;;
@@ -312,6 +320,7 @@ case "$host_os" in
     MACH_OS=osx
     LIBS="${LIBS} -framework CoreFoundation"
     LDFLAGS="${LDFLAGS} -Wl,-headerpad_max_install_names"
+    SIGNED_EXE="t"
     if test "${enable_xonx}" = "no" ; then
       OSX="t"
     else
@@ -415,6 +424,11 @@ case "$MACH_HOST_CPU" in
     ;;
 esac
 
+if test "${MACH}" = "" ; then
+  default_mach_was_empty=yes
+else
+  default_mach_was_empty=no
+fi
 
 if test "${enable_mach}" != "" ; then
   MACH="${enable_mach}"
@@ -437,13 +451,15 @@ elif test "$MACH" = "" -o "$MACH_OS" = "" ; then
    exit 1
 fi
 
-# For a pb build where Racket is supplied, force cross-build
-# mode on the assumption that the host is not a pb build
-# (because it should be created with default configure options)
+# For a pb build where Racket is supplied as "auto" and MACH was not originally
+# empty, force cross-build mode on the assumption that the host is not
+# a pb build (because it should be created with default configure options)
 if test "${enable_pb}" = "yes" ; then
-  if test "${enable_racket}" != "" ; then
+  if test "${enable_racket}" = "auto" ; then
     if test "${enable_target}" = "" ; then
-      enable_target="${MACH}"
+      if test "${default_mach_was_empty}" = "no" ; then
+        enable_target="${MACH}"
+      fi
     fi
   fi
 fi
@@ -465,6 +481,9 @@ if test "${build_os}_${build_cpu}" != "${host_os}_${host_cpu}" ; then
       ;;
     linux*)
       BUILD_OS=le
+      ;;
+    gnu*) # Hurd - must come after linux*
+      BUILD_OS=gnu
       ;;
     *mingw*)
       BUILD_OS=nt
@@ -862,6 +881,7 @@ AC_SUBST(KERNEL_TARGET_MACH)
 AC_SUBST(CROSS_MODE)
 AC_SUBST(SETUP_BOOT_MODE)
 AC_SUBST(OSX)
+AC_SUBST(SIGNED_EXE)
 AC_SUBST(MINGW)
 AC_SUBST(Z_LIB)
 AC_SUBST(LZ4_LIB)
@@ -884,6 +904,7 @@ AC_SUBST(INSTALL_LIBS_ENABLE)
 AC_SUBST(PLT_CS_SLSP_SUFFIX)
 AC_SUBST(RKTIO_CONFIGURE_ARGS)
 AC_SUBST(CC_FOR_BUILD)
+AC_SUBST(CFLAGS_FOR_BUILD)
 AC_SUBST(upsrcdir)
 
 makefiles="Makefile"

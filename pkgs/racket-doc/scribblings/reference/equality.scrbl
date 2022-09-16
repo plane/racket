@@ -1,5 +1,5 @@
 #lang scribble/manual
-@(require (only-in scribblings/style/shared compare)
+@(require (only-in scribblings/style/shared compare0)
           "mz.rkt")
 
 
@@ -39,9 +39,11 @@ preferred for most uses.
 @defproc[(equal-always? [v1 any/c] [v2 any/c]) boolean?]{
 
  Indicates whether @racket[v1] and @racket[v2] are equal and will always stay
- equal independent of @emph{mutations}. Generally, for to values to be equal-always, corresponding
+ equal independent of @emph{mutations}. Generally, for two values to be equal-always, corresponding
  immutable values within @racket[v1] and @racket[v2] must be @racket[equal?],
  while corresponding mutable values within them must be @racket[eq?].
+ @margin-note*{Precedents for this operator in other languages include
+ @tt{egal} @cite["Baker93"].}
 
  Two values @racket[v1] and @racket[v2] are @racket[equal-always?] if and only
  if there exists a third value @racket[_v3] such that @racket[v1] and
@@ -507,36 +509,32 @@ argument to ``recur'' on the pieces, which allows
 operations behave in their own distinct ways on the pieces,
 and enables some cycle detection.
 
-@compare[
-@filebox[@tt{good}]{
+@compare0[
 @racketblock0[
   (define (equal-proc self other rec)
     (rec (fish-size self) (fish-size other)))
-]}
+]
 
-@filebox[@tt{bad}]{
 @racketblock0[
   (define (equal-proc self other rec)
     (equal? (fish-size self) (fish-size other)))
-]}
+]
 ]
 
 The operations @racket[equal?] and @racket[equal-always?]
 should be symmetric, so @racket[_equal-proc] instances
 should not change their answer when the arguments swap:
 
-@compare[
-@filebox[@tt{good}]{
+@compare0[
 @racketblock0[
   (define (equal-proc self other rec)
     (rec (fish-size self) (fish-size other)))
-]}
+]
 
-@filebox[@tt{bad}]{
 @racketblock0[
   (define (equal-proc self other rec)
     (<= (fish-size self) (fish-size other)))
-]}
+]
 ]
 
 However, the operations @racket[chaperone-of?] and
@@ -544,18 +542,16 @@ However, the operations @racket[chaperone-of?] and
 calling the third argument to ``recur'' on pieces, pass the
 pieces in the same order they came in:
 
-@compare[
-@filebox[@tt{good}]{
+@compare0[
 @racketblock0[
   (define (equal-proc self other rec)
     (rec (fish-size self) (fish-size other)))
-]}
+]
 
-@filebox[@tt{bad}]{
 @racketblock0[
   (define (equal-proc self other rec)
     (rec (fish-size other) (fish-size self)))
-]}
+]
 ]
 
 Mutable structs will only use the custom equality for
@@ -567,8 +563,7 @@ should either be declared mutable, or use
 instead of @racket[_equal-proc] from @racket[gen:equal+hash],
 and only access mutable data when the mode is true:
 
-@compare[
-@filebox[@tt{good}]{
+@compare0[
 @racketblock0[
   (struct mcell (value) #:mutable
     #:methods gen:equal+hash
@@ -581,9 +576,8 @@ and only access mutable data when the mode is true:
      (define (hash2-proc self rec)
        (+ (eq-hash-code struct:mcell)
           (rec (mcell-value self))))])
-]}
+]
 
-@filebox[@tt{bad}]{
 @racketblock0[
   (struct mcell (box)
     (code:comment "not declared mutable,")
@@ -598,11 +592,10 @@ and only access mutable data when the mode is true:
      (define (hash2-proc self rec)
        (+ (eq-hash-code struct:mcell)
           (rec (unbox (mcell-value self)))))])
-]}
+]
 ]
 
-@compare[
-@filebox[@tt{also good}]{
+@compare0[#:left "also good" #:right "still bad"
 @racketblock0[
   (struct mcell (value) #:mutable
     (code:comment "only accesses mutable data when mode is true")
@@ -616,9 +609,8 @@ and only access mutable data when the mode is true:
            (+ (eq-hash-code struct:mcell)
               (rec (mcell-value self)))
            (eq-hash-code self)))])
-]}
+]
 
-@filebox[@tt{still bad}]{
 @racketblock0[
   (struct mcell (value) #:mutable
     (code:comment "accesses mutable data ignoring mode")
@@ -629,5 +621,5 @@ and only access mutable data when the mode is true:
      (define (hash-mode-proc self rec mode)
        (+ (eq-hash-code struct:mcell)
           (rec (mcell-value self))))])
-]}
+]
 ]

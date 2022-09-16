@@ -32,17 +32,22 @@ KERNEL_TARGET_MACH = @KERNEL_TARGET_MACH@
 RACKET = @RACKET@
 
 # If `BOOTFILE_RACKET` is set, then it needs only to be a Racket that
-# is recent enough to run "../../ChezScheme/rktboot/main.rkt"; it
+# is recent enough to run "../../rktboot/main.rkt"; it
 # doesn't replace the Racket build here for other purposes
 BOOTFILE_RACKET = @BOOTFILE_RACKET@
 
-# If `SCHEME` is set, it must be compatible to the curren build;
+# If `SCHEME` is set, it must be compatible to the current build;
 # if `SCHEME_DIR` is set and `SCHEME` is not, then `SCHEME_DIR` refers
 # to an existing build directory;
 # if `RACKET` is "auto", then an auto-generated Scheme is used and
 # both of these are ignored
 SCHEME = @SCHEME@
 SCHEME_DIR = @SCHEME_DIR@
+
+# If `BOOTFILE_SCHEME` is set, then it needs only to be a Scheme that
+# is recent enough to run "../../ChezScheme/s/reboot.ss", and it
+# doesn't replace the Scheme build here for other purposes
+BOOTFILE_SCHEME = @BOOTFILE_SCHEME@
 
 # C compiler, etc.
 CC = @CC@
@@ -120,6 +125,8 @@ FRAMEWORK_REL_INSTALL = @FRAMEWORK_REL_INSTALL@
 # Supplies the path for install, using "${libpltdir}" for relative
 # or an absolute path otherwise
 FRAMEWORK_INSTALL_DIR = @FRAMEWORK_INSTALL_DIR@
+# Whether to sign executables (ad hoc) for Mac OS ("t" or "f")
+SIGNED_EXE=@SIGNED_EXE@
 
 # This might be set to a directory that narrows installation actions
 # to just the main collects (no packages), for example; when non-empty
@@ -127,16 +134,20 @@ FRAMEWORK_INSTALL_DIR = @FRAMEWORK_INSTALL_DIR@
 # installation "etc" directory
 SELF_ROOT_CONFIG_DIR =
 
-# Typically "--no-user":
+# Flags supplied to `raco` when installing, typically "--no-user";
+# values of two variable are appended for historical reasons
 INSTALL_SETUP_FLAGS = @INSTALL_SETUP_FLAGS@
+PLT_SETUP_OPTIONS =
 
 # Flags supplied to `racket` when running `raco` to set up
 # packages and collections; the intent is to allow flags
 # like `-MRC` to compile machine-independent bytecode
 # while redirecting machine-specific bytecode to a separate
 # filesystem tree, and/or `--cross-compiler` to support
-# corss compilation
+# cross compilation; values of two variable are appended for
+# historical reasons
 SETUP_MACHINE_FLAGS = 
+INSTALL_SETUP_RACKET_FLAGS =
 
 # Shell command to run after building an executable, where the
 # just-built executable is added to the end of the command
@@ -204,6 +215,7 @@ INSTALL_LIBZO = @INSTALL_LIBZO@
 # ------------------------------------------------------------
 
 CC_FOR_BUILD=@CC_FOR_BUILD@
+CFLAGS_FOR_BUILD=@CFLAGS_FOR_BUILD@
 upsrcdir=@upsrcdir@
 
 ZUO=bin/zuo
@@ -219,4 +231,4 @@ plain-install: $(ZUO)
 
 $(ZUO): $(srcdir)/../../zuo/zuo.c
 	mkdir -p bin
-	$(CC_FOR_BUILD) -DZUO_LIB_PATH='"'"$(upsrcdir)/../../zuo/lib"'"' -o $(ZUO) $(srcdir)/../../zuo/zuo.c
+	$(CC_FOR_BUILD) $(CFLAGS_FOR_BUILD) -DZUO_LIB_PATH='"'"$(upsrcdir)/../../zuo/lib"'"' -o $(ZUO) $(srcdir)/../../zuo/zuo.c

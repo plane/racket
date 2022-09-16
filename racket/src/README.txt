@@ -93,13 +93,8 @@ Quick instructions:
  you don't anticipate updating/rebuilding, but it will be harder to
  restart from scratch should you need to.
 
- Some build modes may require GNU Make. For example, when building the
- Racket CS implementation, GNU Make is required when the bundled LZ4
- is built because none if supplied via `--enable-liblz4`. When
- building the Racket BC implementation, the content of the "foreign"
- subdirectory requires GNU Make if no installed "libffi" is detected.
- If the build fails with another variant of `make`, please try using
- GNU Make.
+ Some build modes may require GNU Make. See "Dependency details" below
+ for more information about dependencies.
 
  When building from a Git clone, after `make install`, the Racket
  installation is still more "minimal" than a "Minimal Racket"
@@ -113,15 +108,6 @@ Detailed instructions:
  0. If you have an old Racket installation in the target directory,
     remove it (unless you are using an "in-place" build from a
     repository as described below).
-
-    On Unix variants other than Mac OS, to run `racket/draw` and
-    `racket/gui` programs, you will not only need the packages that
-    supply those libraries, you'll need Cairo, Pango, and GTk
-    installed. These libraries are not distributed with Racket, and
-    they are not needed for compilation, except for building
-    documentation that uses `racket/draw`. More info about required
-    libs is available at http://docs.racket-lang.org/draw/libs.html
-    and http://docs.racket-lang.org/gui/libs.html.
 
  1. Select (or create) a build directory.
 
@@ -229,19 +215,23 @@ Detailed instructions:
     libraries can find the installation directories. At this stage, in
     case you are packaging an installation instead of installing
     directly, you can redirect the installation by setting the
-    "DESTDIR" makefile variable to an absolute path for the
+    `DESTDIR` makefile variable to an absolute path for the
     packaging area. For example, `make DESTDIR=/tmp/racket-build
     install` places the installation into "/tmp/racket-build" instead
     of the location originally specified with `--prefix`. The
     resulting installation will not work, however, until it is moved
-    to the location originally specified with `--prefix`.
+    to the location originally specified with `--prefix`. When using
+    `make` instead of `zuo`, `DESTDIR` can be set as an environment
+    variable.
 
     Finally, the `make install` step compiles ".zo" bytecode files for
     installed Racket source, generates launcher programs like DrRacket
     (if it's already installed as a package), and builds documentation
     (again, if installed). Use `make plain-install` to install without
     compiling ".zo" files, creating launchers, or building
-    documentation.
+    documentation. Supplying `PLT_SETUP_OPTIONS` (allowed as an
+    environment variable with `make`) sets flags that are passed on to
+    `raco setup` by `make install`.
 
     For a `--prefix` build, unless `--enable-sharezo` is specified,
     "compiled" directories containing ".zo" files are moved from
@@ -274,14 +264,54 @@ Detailed instructions:
     `--enabled-shared` for Racket BC, you may accumulate many unused
     versions of the dynamic libraries in your installation target.
 
-After an "in-place" install from a source distribution, the
-"racket/src" directory is no longer needed, and it can be safely
-deleted. Build information is recorded in a "buildinfo" file in the
-installation.
+ 5. After an "in-place" install from a source distribution, the
+   "racket/src" directory is no longer needed, and it can be safely
+   deleted. Build information is recorded in a "buildinfo" file in the
+   installation.
 
-For a build without `--prefix` (or with `--enable-origtree`) and
-without `--enable-shared`, you can safely move the install tree,
-because all file references within the installation are relative.
+   For a build without `--prefix` (or with `--enable-origtree`) and
+   without `--enable-shared`, you can safely move the install tree,
+   because all file references within the installation are relative.
+
+Dependency details:
+
+ Mostly, you need a C compiler and `make`.
+
+ Some build modes may require GNU Make. For example, when building the
+ Racket CS implementation, GNU Make is required when the bundled
+ liblz4 is built. When building the Racket BC implementation, the
+ content of the "foreign" subdirectory requires GNU Make if no
+ installed libffi is detected. If the build fails with another variant
+ of `make`, please try using GNU Make.
+
+ To build Racket CS on a platform where Chez Scheme does not have a
+ native-code backend, libffi must be installed. (The bundled version
+ that is used by Racket BC is not currently built for Racket CS.)
+
+ Additional recommended libraries for Unix (not Mac OS) platforms:
+
+  * libffi (Racket BC): optional, and a version of libffi is bundled
+    with Racket sources, but an installed libffi is preferred.
+
+  * libncurses (Racket BC and CS): optional, but expeditor support in
+    command-line Racket is enabled only when libncurses is present at
+    compile time.
+
+  * libiconv (Racket BC and CS): optional, but without iconv,
+    `open-bytes-converter` support is limited, and UTF-8 is assumed as
+    the locale's encoding.
+
+  * libz and liblz4 (Racket CS): optional, and built from bundled
+    versions if not present.
+
+ On Unix variants other than Mac OS, to run `racket/draw` and
+ `racket/gui` programs, you will not only need the packages that
+ supply those libraries, you'll need Cairo, Pango, and GTk installed.
+ These libraries are not distributed with Racket, and they are not
+ needed for compilation, except for building documentation that uses
+ `racket/draw`. More info about required libs is available at
+ http://docs.racket-lang.org/draw/libs.html and
+ http://docs.racket-lang.org/gui/libs.html.
 
 
 ========================================================================
@@ -626,6 +656,8 @@ Sources for the Racket CS implementation
     This layer uses the "racketio" library to access OS facilities.
 
  * "regexp" --- regexp matcher
+
+ * "rktboot" --- create Chez Scheme boot files using Racket
 
 See also the shared sources below, which includes rktio, the macro
 expander, and schemify.

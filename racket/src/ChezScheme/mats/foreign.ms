@@ -241,7 +241,7 @@
       (error? (load-shared-object 3))
     )
    ]
-  [(pb tpb pb32 tpb32)
+  [(pb pb32l pb32b pb64l pb64b tpb tpb32l tpb32b tpb64l tpb64b)
    (mat load-shared-object
      (file-exists? foreign1.so)
      (begin (load-shared-object foreign1.so) #t)
@@ -2066,6 +2066,52 @@
             single-float single-float single-float single-float)
            single-float)
          args)))
+
+  (let ([many_ints_and_floats
+         (foreign-procedure "many_ints_and_floats" (int int int int int int float (* float)  int (* float) int float (* float) int)
+                            iptr)])
+    (= (many_ints_and_floats -1 -2 -3 1 2 3 4.0 (make-ftype-pointer float 5) 6 (make-ftype-pointer float 7) 8 9.0 (make-ftype-pointer float 4) 11)
+       (+ -1 -2 -3 1 2 3 4 5 6 7 8 9 4 11)))
+
+  (begin
+    (define-ftype three_floats
+      (struct (a float) (b float) (c float)))
+    (define three-floats
+      (let ([p (make-ftype-pointer three_floats (foreign-alloc (ftype-sizeof three_floats)))])
+        (ftype-set! three_floats (a) p 10.0)
+        (ftype-set! three_floats (b) p 11.0)
+        (ftype-set! three_floats (c) p 12.0)
+        p))
+    #t)
+
+  (let ([proc
+         (foreign-procedure "many_doubles_and_three_floats_and_float" (double double double double double double double double (& three_floats) float)
+                            double)])
+    (= (proc 1.0 2.0 3.0 4.0 5.0 6.0 7.0 8.0 three-floats 9.0)
+       (+ 1.0 2.0 3.0 4.0 5.0 6.0 7.0 8.0 10.0 11.0 12.0 9.0)))
+
+  (let ([proc
+         (foreign-procedure "many_doubles_and_float_and_three_floats" (double double double double double double double double float (& three_floats))
+                            double)])
+    (= (proc 1.0 2.0 3.0 4.0 5.0 6.0 7.0 8.0 9.0 three-floats)
+       (+ 1.0 2.0 3.0 4.0 5.0 6.0 7.0 8.0 9.0 10.0 11.0 12.0)))
+
+  (let ([proc
+         (foreign-procedure "many_doubles_and_float_and_three_floats" (double double double double double double double double float (& three_floats))
+                            double)])
+    (= (proc 1.0 2.0 3.0 4.0 5.0 6.0 7.0 8.0 91.0 three-floats)
+       (+ 1.0 2.0 3.0 4.0 5.0 6.0 7.0 8.0 91.0 10.0 11.0 12.0)))
+
+  (let ([proc
+         (foreign-procedure "many_doubles_and_three_floats_and_three_floats" (double double double double double double double double (& three_floats) (& three_floats))
+                            double)])
+    (= (proc 1.0 2.0 3.0 4.0 5.0 6.0 7.0 8.0 three-floats (let ([p (make-ftype-pointer three_floats (foreign-alloc (ftype-sizeof three_floats)))])
+                                                            (ftype-set! three_floats (a) p 34.0)
+                                                            (ftype-set! three_floats (b) p 35.0)
+                                                            (ftype-set! three_floats (c) p 36.0)
+                                                            p))
+       (+ 1.0 2.0 3.0 4.0 5.0 6.0 7.0 8.0 10.0 11.0 12.0 34.0 35.0 36.0)))
+
  )
 
 (mat auto-mat-icks
@@ -2414,7 +2460,9 @@
         (list (locked-object? cb) ans)))
     '(#f 13))
   (begin
-    (define $stack-depth 8000)
+    (define $stack-depth (cond
+                           [(pb?) 1000] ; interpreter frames are big
+                           [else 8000]))
     (define $base-value 37)
     #t)
   (eqv? ; make sure foreign-callable does it's overflow checks
@@ -2796,7 +2844,7 @@
          '(load-shared-object "msvcrt.dll")]
         [(i3osx ti3osx a6osx ta6osx ppc32osx tppc32osx arm64osx tarm64osx)
          '(load-shared-object "libc.dylib")]
-        [(pb tpb pb32 tpb32)
+        [(pb pb32l pb32b pb64l pb64b tpb tpb32l tpb32b tpb64l tpb64b)
          '(let ([try-load (lambda (path)
                             (guard (x [#t #f])
                                    (load-shared-object path)
@@ -3083,16 +3131,10 @@
           (check-3 long t int 7 (+ 70 x) 700)
           (check-3 i64 t int 9 (+ 90 x) 900)
           (check-3 i8 t int 10 (+ 100 x) 1000))]))
-    (machine-case
-     [(pb tpb pb32 tpb32)
-      ;; libffi doesn't write precisely
-      (define malloc_at_boundary (foreign-procedure "malloc" (int) uptr))
-      (define free_at_boundary (foreign-procedure "free" (uptr) void))]
-     [else
-      (define malloc_at_boundary (foreign-procedure "malloc_at_boundary"
-                                                    (int) uptr))
-      (define free_at_boundary (foreign-procedure "free_at_boundary"
-                                                  (uptr) void))])
+    (define malloc_at_boundary (foreign-procedure "malloc_at_boundary"
+                                                  (int) uptr))
+    (define free_at_boundary (foreign-procedure "free_at_boundary"
+                                                (uptr) void))
     #t)
   (check i8 -11)
   (check u8 129)

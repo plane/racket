@@ -799,38 +799,38 @@
   (test '(3 1 8) next-location i)
 
   (write-string "e\u300" o)
-  (test '(3 2 9) next-location o)
+  (test '(3 3 10) next-location o)
   (test #"e" read-bytes 1 i)
   (test '(3 2 9) next-location i)
   (test #"\314" read-bytes 1 i)
   (test '(3 3 10) next-location i) ; tentatively incremented mid-UTF-8
   (test #"\200" read-bytes 1 i)
-  (test '(3 2 9) next-location i)  ; UTF-8 concluded, grapheme cluster is still tentative, though
+  (test '(3 3 10) next-location i)  ; UTF-8 concluded
 
   (write-string "!" o)
-  (test '(3 3 10) next-location o)
+  (test '(3 4 11) next-location o)
   (test #"!" read-bytes 1 i)
-  (test '(3 3 10) next-location i)
+  (test '(3 4 11) next-location i)
 
   (write-string "\r" o)
-  (test '(4 0 11) next-location o)
+  (test '(4 0 12) next-location o)
   (test #"\r" read-bytes 1 i)
-  (test '(4 0 11) next-location i)
+  (test '(4 0 12) next-location i)
 
   (write-string "\n" o)
-  (test '(4 0 11) next-location o)
+  (test '(4 0 12) next-location o)
   (test #"\n" read-bytes 1 i)
-  (test '(4 0 11) next-location i)
+  (test '(4 0 12) next-location i)
 
   (write-string "." o)
-  (test '(4 1 12) next-location o)
+  (test '(4 1 13) next-location o)
   (test #"." read-bytes 1 i)
-  (test '(4 1 12) next-location i)
+  (test '(4 1 13) next-location i)
 
   (write-string "app\u03BBe" o)
-  (test '(4 6 17) next-location o)
+  (test '(4 6 18) next-location o)
   (test "app\u03BBe" read-string 5 i)
-  (test '(4 6 17) next-location i)
+  (test '(4 6 18) next-location i)
 
   (void))
 

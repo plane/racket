@@ -6,7 +6,8 @@
          (only-in "../../start/build.zuo"
                   [targets-at starter-targets-at])
          (only-in "../main.zuo"
-                  [targets-at cs-targets-at]))
+                  [targets-at cs-targets-at])
+         "scheme-version.zuo")
 
 (provide-targets targets-at)
 
@@ -22,7 +23,7 @@
   (define host-m (lookup 'MACH))
   (define m (hash-ref config 'TARGET_MACH host-m))
 
-  (define macx? (glob-match? "*osx" m)) ; maybe xonx
+  (define signed-exe? (equal? (lookup 'SIGNED_EXE) "t"))
   (define mac? (equal? (lookup 'OSX) "t"))
   (define mac-fw? (and mac?
                        (equal? (lookup 'MACLIBRKT_LINK_MODE) "fw")))
@@ -121,11 +122,18 @@
   (define rktio_config.h (list-ref librktio.a+rktio_config.h 1))
 
   (define main-deps
-    (list (at-source "main.c")
-          (at-source "boot.h")
-          (at-dir "cs_config.h")
-          (at-source "../../start/config.inc")
-          (at-source "../../start/self_exe.inc")))
+    (append
+     (list (at-source "main.c")
+           (at-source "boot.h")
+           (at-dir "cs_config.h")
+           (at-source "../../start/config.inc")
+           (at-source "../../start/self_exe.inc"))
+     (if windows?
+         (list
+          (at-source "../../start/embedded_dll.inc")
+          (at-source "../../start/cmdl_to_argv.inc")
+          (at-source "../../start/delayed.inc"))
+         '())))
 
   (define main.o (at-dir (.c->.o "main.c")))
   (define grmain.o (at-dir (.c->.o "grmain.c")))
@@ -283,10 +291,10 @@
     (apply bootstrap-racket args))
 
   (define (strip-signature dest)
-    (when macx?
+    (when signed-exe?
       (strip-signature* cross? bootstrap-racket dest)))
   (define (restore-signature dest)
-    (when macx?
+    (when signed-exe?
       (restore-signature* cross? bootstrap-racket dest)))
 
   (define (install_name_tool . args)
@@ -636,7 +644,8 @@
                                                                    ;; these are for Windows:
                                                                    'runtimeAs "static"
                                                                    'linkAs "exe"
-                                                                   'kernelLibName "kernel")))
+                                                                   'kernelLibName "kernel"
+                                                                   'STRIP (lookup 'STRIP_DEBUG "strip"))))
                    (build (find-target (if cross? "kernel" "build") m-targets) token)
                    (unless cross?
                      (build (find-target check-bootstrap-same-stamp the-targets)
@@ -655,25 +664,31 @@
                           (define host-m-targets (scheme-targets-at (make-at-dir (at-dir CS m))
                                                                     (hash-set* config
                                                                                'm host-m)))
-                          (define args
+                          (define target-name+args
                             (cond
                               [(not (equal? (lookup 'SCHEME_DIR) ""))
                                ;; use existing Scheme workarea to build boot files
-                               (list "--host-workarea"
-                                     (at-dir (lookup 'SCHEME_DIR) host-m)
-                                     m)]
+                               (cons "bootquick"
+                                     (list "--host-workarea"
+                                           (at-dir (lookup 'SCHEME_DIR) host-m)
+                                           m))]
                               [(not (equal? (lookup 'SCHEME) ""))
-                               ;; use existing Scheme to build boot files
-                               (list "--host-scheme"
-                                     (executable->path (lookup 'SCHEME) at-dir)
-                                     m)]
+                               ;; use existing Scheme to build boot files; if it doesn't
+                               ;; report the same version as we're trying to build, use it
+                               ;; in "reboot" mode
+                               (define exe (executable->path (lookup 'SCHEME) at-dir))
+                               (cons (if (same-scheme-version? exe)
+                                         "bootquick"
+                                         "reboot")
+                                     (list "--host-scheme" exe m))]
                               [else
                                ;; assuming auto Racket and/or Scheme is built before we get here
-                               (list "--host-workarea"
-                                     (at-dir "local/cs/c/ChezScheme" host-m)
-                                     m)]))
-                          (build (command-target->target (find-target "bootquick" host-m-targets)
-                                                         args)
+                               (cons "bootquick"
+                                     (list "--host-workarea"
+                                           (at-dir "local/cs/c/ChezScheme" host-m)
+                                           m))]))
+                          (build (command-target->target (find-target (car target-name+args) host-m-targets)
+                                                         (cdr target-name+args))
                                  token))])]
            [(or (not (equal? (lookup 'BOOTFILE_RACKET) ""))
                 (not (equal? (lookup 'RACKET) "")))
@@ -685,11 +700,11 @@
                                                         (lookup 'RACKET)
                                                         r)))
                           (define racket.exe (executable->path bootfile-racket at-dir))
-                          ;; "rktboot/main.rkt" performs it's own timestamp-based "make"
+                          ;; "rktboot/main.rkt" performs its own timestamp-based "make"
                           (process/wait racket.exe
                                         (setup-boot at-dir config (hash 'mode "--chain"
                                                                         'compiled-subdir "compiled/rktboot"))
-                                        (at-source "../../ChezScheme/rktboot/main.rkt")
+                                        (at-source "../../rktboot/main.rkt")
                                         "--scheme-src" (at-source "../../ChezScheme")
                                         "--dest" (at-dir CS)
                                         "--machine" m))])]
@@ -1016,10 +1031,9 @@
   (define (setup)
     (call-with-dest-racket
      (lambda (bindir dest-racket)
-       (define copytree-racket (and cross? (config-bootstrap-racket)))
+       (define copytree-racket (and cross? (hash-ref (config-bootstrap-racket) 'racket)))
        (maybe-copytree config dest-racket copytree-racket at-dir)
-       (run-raco-setup config dest-racket
-                       (and cross? (hash-ref (config-bootstrap-racket) 'racket))
+       (run-raco-setup config dest-racket copytree-racket
                        ;; this can be redundant if it's also supplied via `SETUP_MACHINE_FLAGS`,
                        ;; but redundant should be ok:
                        (list "-MCR" (~a (at-dir "compiled") ":")

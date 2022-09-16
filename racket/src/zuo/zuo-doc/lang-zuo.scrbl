@@ -500,7 +500,9 @@ back into Zuo.
 )]{
 
 Analogous to @realracket*[symbol? symbol->string string->symbol
-string->uninterned-symbol] from @racketmodname[racket].}
+string->uninterned-symbol] from @racketmodname[racket], but
+@racket[string->symbol] accepts only strings that do not contain the
+null character.}
 
 
 @section{Hash Tables (Persistent Maps)}
@@ -538,10 +540,20 @@ support to convert the textual form back into a hash table value.
 
 Analogous to @realracket*[hash? hash hash-ref hash-set hash-remove
 hash-keys hash-count hash-keys-subset?] from @racketmodname[racket].
-Besides being constrained to symbol keys, there is one additional
-difference: the third argument to @racket[hash-ref], when supplied,
-is always used as a value to return if a key is missing, as
-opposed to a failure thunk.}
+
+Besides being constrained to symbol keys, there are two additional
+differences:
+
+@itemlist[
+
+ @item{the third argument to @racket[hash-ref], when supplied, is
+       always used as a value to return if a key is missing, as
+       opposed to a failure thunk; and}
+
+ @item{the @racket[hash-keys] function returns interned keys sorted
+       alphabetically.}
+
+]}
 
 
 @section{Procedures}
@@ -612,11 +624,11 @@ all path separators the platform default (on Windows).}
 
 @defproc[(find-relative-path [base path-string?] [path path-string?]) path-string?]{
 
-Attempts to finds a path relative to @racket[base] that accesses the
+Attempts to find a path relative to @racket[base] that accesses the
 same file or directory as @racket[path]. Both @racket[base] and
 @racket[path] must be normalized in the sense of
 @racket[simple-form-path], otherwise @filepath{.} and @filepath{..}
-elements are treated normal path elements. Assuming that @racket[base]
+elements are treated as normal path elements. Assuming that @racket[base]
 and @racket[path] are normalized, the result is always normalized.
 
 The result path depends on whether @racket[base] and @racket[path] are
@@ -973,8 +985,8 @@ Reads from the input file or input stream associated with
 that many bytes, @racket[eof] to read all content up to an
 end-of-file, or @racket['avail] where supported (on Unix) to read as
 many bytes as available in non-blocking mode. The result is
-@racket[eof] if @racket[amount] is not @racket[0] or @racket['avail]
-and no bytes are available before an end-of-file; otherwise, it is a
+@racket[eof] if @racket[amount] is not @racket[0], @racket[eof], or @racket['avail]
+and if no bytes are available before an end-of-file; otherwise, it is a
 string containing the read bytes.
 
 The number of bytes in the returned string can be less than
@@ -1276,7 +1288,7 @@ Zuo process. The hash table includes the following keys:
 
 @itemlist[
 
-@item{@racket['args]: comment-line arguments provided when the
+@item{@racket['args]: command-line arguments provided when the
       process was started, not counting Zuo configuration arguments or
       the name of a script to run}
 

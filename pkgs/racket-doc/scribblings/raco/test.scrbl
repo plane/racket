@@ -131,7 +131,7 @@ The @exec{raco test} command accepts several flags:
       operating-system process.}
 
  @item{@Flag{j} @nonterm{n} or @DFlag{jobs} @nonterm{n}
-      --- Runs up to @nonterm{n} tests in parallel.}
+      --- Runs up to @nonterm{n} test files in parallel.}
 
  @item{@DFlag{timeout} @nonterm{seconds}
       --- Sets the default timeout (after which a test counts as failed)
@@ -168,6 +168,10 @@ The @exec{raco test} command accepts several flags:
        stderr output is treated as success as long as it matches any
        one @nonterm{pattern}.}
 
+ @item{@DFlag{errortrace}
+       --- Dynamically loads @racketmodname[errortrace #:indirect]
+       before running the tests. Note that already-compiled files will not
+       include the tracing information.}
  @item{@Flag{y} or @DFlag{make}
        --- Enable automatic
         generation and update of compiled @filepath{.zo} files.

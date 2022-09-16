@@ -94,12 +94,16 @@ BOOTFILE_RACKET =
 # this path can be relative to the cross build directory
 CS_HOST_WORKAREA_PREFIX =
 
+# For building Zuo:
+CC_FOR_BUILD = $(CC) -O2
+CFLAGS_FOR_BUILD =
+
 # ------------------------------------------------------------
 # Racket CS boot files
 
 # This branch name must be changed each time the pb boot files are
 # updated:
-PB_BRANCH = circa-8.5.0.9-1
+PB_BRANCH = circa-8.6.0.12-1
 PB_REPO = https://github.com/racket/pb
 
 # Set to empty for Git before v1.7.10:
@@ -627,7 +631,7 @@ ping: $(ZUO)
 
 racket/src/build/bin/zuo: racket/src/zuo/zuo.c
 	mkdir -p racket/src/build/bin
-	$(CC) $(CFLAGS) -O2 -DZUO_LIB_PATH='"../../zuo/lib"' -o $(ZUO) racket/src/zuo/zuo.c
+	$(CC_FOR_BUILD) $(CFLAGS_FOR_BUILD) -DZUO_LIB_PATH='"../../zuo/lib"' -o $(ZUO) racket/src/zuo/zuo.c
 
 racket\src\build\zuo.exe: racket\src\zuo\zuo.c
 	IF NOT EXIST racket\src\build cmd /c mkdir racket\src\build

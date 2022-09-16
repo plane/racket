@@ -75,7 +75,8 @@
                     (fprintf (mat-output) "Error reading mat input: ")
                     (display-condition c (mat-output))
                     (reset))))
-            (lambda () (load in))))))))
+            (lambda () (load in))))
+        (fprintf (mat-output) "Finished loading mat\n")))))
 
 (define mat-one-exp
   (lambda (expect th sanitize-all?)
@@ -523,7 +524,7 @@
   (lambda () #f))
 
 (define pb?
-  (if (memq (machine-type) '(pb tpb pb32 tpb32))
+  (if (memq (machine-type) '(pb pb32l pb32b pb64l pb64b tpb tpb32l tpb32b tpb64l tpb64b))
       (lambda () #t)
       (lambda () #f)))
 

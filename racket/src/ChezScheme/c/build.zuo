@@ -200,7 +200,7 @@
                               env)
                      env)))
              (hash-ref (runtime-env) 'env)
-             '(CC CFLAGS AR ARFLAGS RANLIB LDFLAGS))))
+             '(CC CFLAGS AR ARFLAGS RANLIB STRIP LDFLAGS))))
 
   (define (add-to-env vars env)
     (foldl (lambda (var=val env)
@@ -301,7 +301,8 @@
                                         (string->shell (~a "CFLAGS=" (hash-ref config 'CFLAGS)))
                                         (string->shell (~a "AR=" (hash-ref config 'AR)))
                                         (string->shell (~a "RANLIB=" (hash-ref config 'RANLIB)))
-                                        (string->shell (~a "RC=" (hash-ref config 'WINDRES))))
+                                        (string->shell (~a "RC=" (hash-ref config 'WINDRES)))
+                                        (string->shell (~a "STRIP=" (hash-ref config 'STRIP))))
                            "\n")
                        (build-path zlib-dir "Makefile")
                        :truncate)]
@@ -360,14 +361,14 @@
                            (compile-one .c .o))])
             main-srcs main-objs)
 
-     [:depend ,(.c->.o "scheme.c") (,(at-source "itest.c"))]
-     [:depend ,(.c->.o "gc-011.c") (,@gc-wrap ,(at-mach "gc-ocd.inc"))]
-     [:depend ,(.c->.o "gc-ocd.c") (,@gc-wrap ,(at-mach "gc-ocd.inc"))]
-     [:depend ,(.c->.o "gc-oce.c") (,@gc-wrap ,(at-mach "gc-oce.inc"))]
-     [:depend ,(.c->.o "gc-par.c") (,@gc-wrap ,(at-mach "gc-par.inc"))]
-     [:depend ,(.c->.o "gcwrapper.c") (,(at-mach "heapcheck.inc"))]
+     [:depend ,(at-dir (.c->.o "scheme.c")) (,(at-source "itest.c"))]
+     [:depend ,(at-dir (.c->.o "gc-011.c")) (,@gc-wrap ,(at-mach "gc-ocd.inc"))]
+     [:depend ,(at-dir (.c->.o "gc-ocd.c")) (,@gc-wrap ,(at-mach "gc-ocd.inc"))]
+     [:depend ,(at-dir (.c->.o "gc-oce.c")) (,@gc-wrap ,(at-mach "gc-oce.inc"))]
+     [:depend ,(at-dir (.c->.o "gc-par.c")) (,@gc-wrap ,(at-mach "gc-par.inc"))]
+     [:depend ,(at-dir (.c->.o "gcwrapper.c")) (,(at-mach "heapcheck.inc"))]
 
-     [:depend ,(.c->.o "pb.c") (,(at-source "pb.h"))]
+     [:depend ,(at-dir (.c->.o "pb.c")) (,(at-source "pb.h"))]
 
      [:target ,res-file (,(at-source "scheme.rc"))
               ,(lambda (path token)
@@ -409,9 +410,10 @@
                    (make-run-scheme at-source at-dir lookup
                                     #f (at-dir "..") m))
                  (call-with-scheme
-                  (lambda (scheme.exe env)
-                    (process scheme.exe args (hash 'env env
-                                                   'exec? (eq? 'unix (system-type)))))))
+                  (lambda (scheme.exe scheme-args env)
+                    (process scheme.exe scheme-args args
+                             (hash 'env env
+                                   'exec? (eq? 'unix (system-type)))))))
               :command]
 
      [:target revision ()

@@ -1332,7 +1332,13 @@
     '(3.4 -4))
   ($thread-check)
   (begin
-    (load-shared-object (find-source "foreign1.so"))
+    (load-shared-object (let ([p (find-source "foreign1.so")])
+                          p
+                          (if (or (path-absolute? p)
+                                  (not (equal? "" (path-parent p))))
+                              p
+                              ;; specify relative to current directory:
+                              (path-build "." p))))
     #t)
   (equal?
     (let ()
@@ -1346,6 +1352,8 @@
       (define ls '())
       (ftype-set! A (x) a 3.4)
       (ftype-set! A (y) a 1)
+      (ff-locked-incr! (ftype-&ref A (y) a)) ; try once in main thread, in case this errors
+      (ff-locked-decr! (ftype-&ref A (y) a))
       (with-mutex m
         (do ([n n (fx- n 1)])
           ((fx= n 0))

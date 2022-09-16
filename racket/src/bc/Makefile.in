@@ -84,6 +84,7 @@ CROSS_COMPILE_TARGET_KIND = @CROSS_COMPILE_TARGET_KIND@
 SETUP_BOOT_MODE = @SETUP_BOOT_MODE@
 
 INSTALL_SETUP_FLAGS = @INSTALL_SETUP_FLAGS@
+# PLT_SETUP_OPTIONS =
 INSTALL_SETUP_RACKET_FLAGS = @INSTALL_SETUP_RACKET_FLAGS@
 SETUP_MACHINE_FLAGS = 
 
@@ -130,6 +131,7 @@ ICP_STATIC_LIB=@ICP_STATIC_LIB@
 # ------------------------------------------------------------
 
 CC_FOR_BUILD=@CC_FOR_BUILD@
+CFLAGS_FOR_BUILD=@CFLAGS_FOR_BUILD@
 upsrcdir=@upsrcdir@
 
 ZUO=bin/zuo
@@ -181,4 +183,4 @@ install-both: $(ZUO)
 
 $(ZUO): $(srcdir)/../zuo/zuo.c
 	mkdir -p bin
-	$(CC_FOR_BUILD) -DZUO_LIB_PATH='"'"$(upsrcdir)/../zuo/lib"'"' -o $(ZUO) $(srcdir)/../zuo/zuo.c
+	$(CC_FOR_BUILD) $(CFLAGS_FOR_BUILD) -DZUO_LIB_PATH='"'"$(upsrcdir)/../zuo/lib"'"' -o $(ZUO) $(srcdir)/../zuo/zuo.c
