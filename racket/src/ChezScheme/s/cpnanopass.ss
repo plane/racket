@@ -2897,6 +2897,7 @@
         [(continuation-set ,cop ,[e1 #f -> * fp?1] ,[e2 #f -> * fp?2]) #f]
         [(foreign-call ,info ,[e #f -> * fp?] ,[e* #f -> * fp?*] ...) #f]
         [(profile ,src) #f]
+        [(raw ,e) #f]
         [(pariah) #f])
       (Lvalue : Lvalue (ir [lhs #f]) -> * (#f)
         [,x
@@ -3238,16 +3239,20 @@
       (definitions
         (define local*)
         (define make-tmp
-          (lambda (x type)
-            (import (only np-languages make-tmp))
-            (let ([x (make-tmp x type)])
-              (set! local* (cons x local*))
-              x)))
+          (lambda (x use-type ir)
+            (define (mktmp type)
+              (import (only np-languages make-tmp))
+              (let ([x (make-tmp x (or use-type type))])
+                (set! local* (cons x local*))
+                x))
+            (nanopass-case (L9.75 Expr) ir
+              [(raw ,e) (values (mktmp 'uptr) e)]
+              [else (values (mktmp 'ptr) ir)])))
         (define Ref
           (lambda (ir setup*)
             (if (var? ir)
                 (values ir setup*)
-                (let ([tmp (make-tmp 't 'ptr)])
+                (let-values ([(tmp ir) (make-tmp 't #f ir)])
                   (values tmp (cons (Rhs ir tmp) setup*))))))
         (define Lvalue?
           (lambda (x)
@@ -3333,7 +3338,7 @@
          (values t (cons e0 setup*))]
         [(pariah) (values (%constant svoid) (list (with-output-language (L10 Expr) `(pariah))))]
         [else
-         (let ([tmp (make-tmp 't (if fp? 'fp 'ptr))])
+         (let-values ([(tmp ir) (make-tmp 't (and fp? 'fp) ir)])
            (values tmp (list (Rhs ir tmp))))])
       (Expr : Expr (ir fp? k) -> Expr ()
         [(inline ,info ,prim ,e1* ...)
@@ -8489,6 +8494,10 @@
               (let* ([code* (cons* `(,size . ,fs)
                                    (aop-cons* `(asm "frame size:" ,fs)
                                               code*))]
+                     [code* (cons*
+                             '(code-top-link)
+                             (aop-cons* `(asm code-top-link)
+                                        code*))]
                      [code* (cons* (if (target-fixnum? lpm)
                                        `(,size . ,(fix lpm))
                                        `(abs 0 (object ,lpm)))
@@ -8499,11 +8508,7 @@
                                 (cons*
                                  mrv-error
                                  (aop-cons* `(asm "mrv point:" ,mrv-error)
-                                            code*)))]
-                     [code* (cons*
-                             '(code-top-link)
-                             (aop-cons* `(asm code-top-link)
-                                        code*))])
+                                            code*)))])
                 code*)))))
 
       (define asm-rp-compact-header
@@ -10086,6 +10091,7 @@
                        (let ([spillable-live (live-info-live live-info)])
                          (if (unspillable? x)
                              (let ([unspillable* (remq x unspillable*)])
+                               (unless (uvar-seen? x) (printf "!! ~s\n" x))
                                (safe-assert (uvar-seen? x))
                                (uvar-seen! x #f)
                                (if (and (var? rhs) (var-index rhs reg-spillinfo))

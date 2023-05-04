@@ -1,6 +1,26 @@
-Version 8.7
+Version 8.9, April 2023
+Use Unicode 15.0 for character and string operations
+Add `racket/hash-code`
+Add `fxrshift/logical`
+Add support for `configure-expand` submodules
+Add support for multiple values to `stream-cons`
+Improve `unit/c` to see more bindings and to enforce contracts
+ within `constract` forms
+Add an optipnal results clause to `define-values/invoke-unit`
+Change TCP output port block buffering to imply TCP_NODELAY
+
+Version 8.8, January 2023
+Add `#:param` option to `->i`
+Extend `copy-file` with permission-management arguments
+Fix CS `[:word:]` regexp pattern to include ASCII digits
+Other bug repairs and other changes noted in the documentation
+
+Version 8.7, October 2022
 Use Unicode 14.0 for character and string operations
 Add grapheme operations, such as `string-grapheme-count`
+CS: Add support for RV64G (RISC-V)
+Add `(#%declare #:require=define)` to disable shadowing by definitions
+Other bug repairs and other changes noted in the documentation
 
 Version 8.6, July 2022
 Change build to use Zuo

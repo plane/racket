@@ -31,6 +31,8 @@ READ_ONLY Scheme_Object *scheme_unsafe_struct_star_set_proc;
 
 /* locals */
 static Scheme_Object *vector_p (int argc, Scheme_Object *argv[]);
+static Scheme_Object *immutable_vector_p (int argc, Scheme_Object *argv[]);
+static Scheme_Object *mutable_vector_p (int argc, Scheme_Object *argv[]);
 static Scheme_Object *vector (int argc, Scheme_Object *argv[]);
 static Scheme_Object *vector_immutable (int argc, Scheme_Object *argv[]);
 static Scheme_Object *vector_length (int argc, Scheme_Object *argv[]);
@@ -60,6 +62,8 @@ static Scheme_Object *unsafe_struct_set (int argc, Scheme_Object *argv[]);
 static Scheme_Object *unsafe_struct_star_ref (int argc, Scheme_Object *argv[]);
 static Scheme_Object *unsafe_struct_star_set (int argc, Scheme_Object *argv[]);
 static Scheme_Object *unsafe_struct_star_cas (int argc, Scheme_Object *argv[]);
+static Scheme_Object *unsafe_struct_star_type (int argc, Scheme_Object *argv[]);
+static Scheme_Object *unsafe_struct_type (int argc, Scheme_Object *argv[]);
 static Scheme_Object *unsafe_string_len (int argc, Scheme_Object *argv[]);
 static Scheme_Object *unsafe_string_ref (int argc, Scheme_Object *argv[]);
 static Scheme_Object *unsafe_string_set (int argc, Scheme_Object *argv[]);
@@ -92,6 +96,16 @@ scheme_init_vector (Scheme_Startup_Env *env)
                                                             | SCHEME_PRIM_PRODUCES_BOOL);
   scheme_addto_prim_instance("vector?", p, env);
   scheme_vector_p_proc = p;
+
+  p = scheme_make_folding_prim(immutable_vector_p, "immutable-vector?", 1, 1, 1);
+  SCHEME_PRIM_PROC_FLAGS(p) |= scheme_intern_prim_opt_flags(SCHEME_PRIM_IS_OMITABLE
+                                                            | SCHEME_PRIM_PRODUCES_BOOL);
+  scheme_addto_prim_instance("immutable-vector?", p, env);
+
+  p = scheme_make_folding_prim(mutable_vector_p, "mutable-vector?", 1, 1, 1);
+  SCHEME_PRIM_PROC_FLAGS(p) |= scheme_intern_prim_opt_flags(SCHEME_PRIM_IS_OMITABLE
+                                                            | SCHEME_PRIM_PRODUCES_BOOL);
+  scheme_addto_prim_instance("mutable-vector?", p, env);
 
   REGISTER_SO(scheme_make_vector_proc);
   p = scheme_make_immed_prim(scheme_checked_make_vector, "make-vector", 1, 2);
@@ -355,6 +369,9 @@ scheme_init_unsafe_vector (Scheme_Startup_Env *env)
   SCHEME_PRIM_PROC_FLAGS(p) |= scheme_intern_prim_opt_flags(SCHEME_PRIM_IS_NARY_INLINED);
   scheme_addto_prim_instance("unsafe-struct*-cas!", p, env);
 
+  p = scheme_make_immed_prim(unsafe_struct_star_type, "unsafe-struct*-type", 1, 1);
+  scheme_addto_prim_instance("unsafe-struct*-type", p, env);
+
   REGISTER_SO(scheme_unsafe_string_length_proc);
   p = scheme_make_immed_prim(unsafe_string_len, "unsafe-string-length", 1, 1);
   SCHEME_PRIM_PROC_FLAGS(p) |= scheme_intern_prim_opt_flags(SCHEME_PRIM_IS_UNARY_INLINED
@@ -512,6 +529,22 @@ static Scheme_Object *
 vector_p (int argc, Scheme_Object *argv[])
 {
   return (SCHEME_CHAPERONE_VECTORP(argv[0]) ? scheme_true : scheme_false);
+}
+
+static Scheme_Object *
+immutable_vector_p (int argc, Scheme_Object *argv[])
+{
+  Scheme_Object *obj = argv[0];
+  if SCHEME_NP_CHAPERONEP(obj) obj = SCHEME_CHAPERONE_VAL(obj);
+  return ((SCHEME_VECTORP(obj) && SCHEME_IMMUTABLEP(obj)) ? scheme_true : scheme_false);
+}
+
+static Scheme_Object *
+mutable_vector_p (int argc, Scheme_Object *argv[])
+{
+  Scheme_Object *obj = argv[0];
+  if SCHEME_NP_CHAPERONEP(obj) obj = SCHEME_CHAPERONE_VAL(obj);
+  return ((SCHEME_VECTORP(obj) && !SCHEME_IMMUTABLEP(obj)) ? scheme_true : scheme_false);
 }
 
 Scheme_Object *
@@ -1405,6 +1438,11 @@ static Scheme_Object *unsafe_struct_star_cas (int argc, Scheme_Object *argv[])
 #endif
 }
 
+static Scheme_Object *unsafe_struct_star_type (int argc, Scheme_Object *argv[])
+{
+  return (Scheme_Object *)((Scheme_Structure *)argv[0])->stype;
+}
+
 static Scheme_Object *unsafe_string_len (int argc, Scheme_Object *argv[])
 {
   intptr_t n = SCHEME_CHAR_STRLEN_VAL(argv[0]);
@@ -1488,6 +1526,10 @@ static Scheme_Object *unsafe_string_immutable_bang (int argc, Scheme_Object *arg
 
   if (!SCHEME_CHAR_STRINGP(o))
     scheme_wrong_contract("unsafe-string->immutable-string!", "string?", 0, argc, argv);
+
+  if (!SCHEME_CHAR_STRLEN_VAL(o)) {
+    return scheme_zero_length_char_immutable_string;
+  }
 
   SCHEME_SET_IMMUTABLE(o);
 

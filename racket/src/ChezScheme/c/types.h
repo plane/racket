@@ -330,16 +330,14 @@ typedef struct _dirtycardinfo {
 #define ENTRYFRAMESIZE(x) (ISENTRYCOMPACT(x)                            \
                            ? ((COMPACTENTRYFIELD(x, compact_frame_words_offset) & compact_frame_words_mask) << log2_ptr_bytes) \
                            : RPHEADERFRAMESIZE((uptr)(x) - size_rp_header))
-#define ENTRYOFFSET(x) (ISENTRYCOMPACT(x)                               \
-                        ? RPCOMPACTHEADERTOPLINK((uptr)(x) - size_rp_compact_header) \
-                        : RPHEADERTOPLINK((uptr)(x) - size_rp_header))
-#define ENTRYOFFSETADDR(x) (ISENTRYCOMPACT(x)                               \
-                            ? &RPCOMPACTHEADERTOPLINK((uptr)(x) - size_rp_compact_header) \
-                            : &RPHEADERTOPLINK((uptr)(x) - size_rp_header))
 #define ENTRYLIVEMASK(x) (ISENTRYCOMPACT(x)                             \
                           ? FIX(COMPACTENTRYFIELD(x, compact_frame_mask_offset)) \
                           : RPHEADERLIVEMASK((uptr)(x) - size_rp_header))
 #define ENTRYNONCOMPACTLIVEMASKADDR(x) (&RPHEADERLIVEMASK((uptr)(x) - size_rp_header))
+
+/* `top-link` must be a fixed distance from end or header, whether compact or not: */
+#define ENTRYOFFSET(x) (RPCOMPACTHEADERTOPLINK((uptr)(x) - size_rp_compact_header))
+#define ENTRYOFFSETADDR(x) (&ENTRYOFFSET(x))
 
 #define PORTFD(x) ((iptr)PORTHANDLER(x))
 #define PORTGZFILE(x) ((gzFile)(PORTHANDLER(x)))
@@ -404,16 +402,20 @@ typedef struct {
 #define tc_mutex_acquire() do {                 \
     assert_no_alloc_mutex();                    \
     S_mutex_acquire(&S_tc_mutex);               \
+    S_tc_mutex_depth += 1;                      \
   } while (0);
 #define tc_mutex_release() do {                 \
+    S_tc_mutex_depth -= 1;                      \
     S_mutex_release(&S_tc_mutex);               \
   } while (0);
 
 /* Allocation mutex is ordered after tc mutex */
 #define alloc_mutex_acquire() do {              \
     S_mutex_acquire(&S_alloc_mutex);            \
+    S_alloc_mutex_depth += 1;                   \
   } while (0);
 #define alloc_mutex_release() do {              \
+    S_alloc_mutex_depth -= 1;                   \
     S_mutex_release(&S_alloc_mutex);            \
   } while (0);
 
@@ -544,7 +546,7 @@ typedef struct thread_gc {
 #define DOUNDERFLOW\
  &CODEIT(CLOSCODE(S_lookup_library_entry(library_dounderflow, 1)),size_rp_header)
 
-#define HEAP_VERSION_LENGTH 16
+#define HEAP_VERSION_LENGTH 24
 #define HEAP_MACHID_LENGTH 16
 #define HEAP_STAMP_LENGTH 16
 

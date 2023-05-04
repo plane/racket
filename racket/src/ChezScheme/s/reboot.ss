@@ -381,7 +381,6 @@
   (define-primitive $record #%$record)
   (define-primitive $record? #%$record?)
   (define-primitive $record-type-descriptor #%$record-type-descriptor)
-  (define-primitive $make-record-type-descriptor* (lambda args (error '$make-record-type-descriptor* "not ready")))
   (define-primitive $make-record-constructor-descriptor #%$make-record-constructor-descriptor)
   (define-primitive $record-type-field-indices #%$record-type-field-indices)
   (define-primitive $object-ref #%$object-ref)
@@ -426,6 +425,9 @@
 (define-syntax $lambda/lift-barrier
   (syntax-rules ()
     [(_ fmls body ...) (lambda fmls body ...)]))
+(define-syntax $begin-unsafe
+  (syntax-rules ()
+    [(_ body0 body ...) (begin body0 body ...)]))
 
 (define-primitive $fasl-target (make-parameter #f))
 (define-primitive $current-mso (make-parameter #f))
@@ -539,8 +541,13 @@
   fn)
 
 (define-primitive ($make-read p . more)
-  (lambda ()
-    (read p)))
+  (let ([l (filtered-file->exps p)])
+    (lambda ()
+      (if (null? l)
+          #!eof
+          (let ([a (car l)])
+            (set! l (cdr l))
+            a)))))
 
 (define-primitive ($map who f . ls)
   (apply map f ls))
@@ -573,7 +580,9 @@
 (define (filtered-file->exps s)
   (cond
     [need-vector-filter?
-     (call-with-input-file
+     ((if (input-port? s)
+          (lambda (s proc) (proc s))
+          call-with-input-file)
       s
       (lambda (i)
         (let* ([str (get-string-all i)]
@@ -625,6 +634,7 @@
                        (vec-loop (add1 i))))
                    v)]
                 [else r]))))))]
+    [(input-port? s) (input->exps s)]
     [else (file->exps s)]))
 
 (define (noisy-compile-and-load s)

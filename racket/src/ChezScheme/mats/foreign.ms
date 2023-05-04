@@ -199,7 +199,7 @@
       (error? (load-shared-object 3))
     )
    ]
-  [(i3le ti3le a6le ta6le arm32le tarm32le arm64le tarm64le ppc32le tppc32le)
+  [(i3le ti3le a6le ta6le arm32le tarm32le arm64le tarm64le ppc32le tppc32le rv64le trv64le)
    (mat load-shared-object
       (file-exists? foreign1.so)
       (begin (load-shared-object foreign1.so) #t)
@@ -251,7 +251,8 @@
                               #t))])
        (or (try-load "libc.so.7")
            (try-load "libc.so.6")
-           (try-load "libc.dylib"))))]
+           (try-load "libc.dylib")))
+     (error? (load-shared-object 3)))]
   [else
    (mat foreign-procedure
       (error? (foreign-procedure "foo" () scheme-object))
@@ -2836,7 +2837,7 @@
       (machine-case
         [(i3ob ti3ob a6ob ta6ob a6s2 ta6s2 i3s2 ti3s2 i3qnx ti3qnx i3nb ti3nb a6nb ta6nb)
          '(load-shared-object "libc.so")]
-        [(i3le ti3le a6le ta6le arm32le tarm32le arm64le tarm64le ppc32le tppc32le)
+        [(i3le ti3le a6le ta6le arm32le tarm32le arm64le tarm64le ppc32le tppc32le rv64le trv64le)
          '(load-shared-object "libc.so.6")]
         [(i3fb ti3fb a6fb ta6fb)
          '(load-shared-object "libc.so.7")]
@@ -3186,6 +3187,24 @@
   (check-union [x i64 43] [y int 0])
   (check-union [x float 58.0] [y int 0])
   (check-union [x double 68.0] [y int 0])
+
+  (let ()
+    (define-ftype T (struct
+                        [ds (union [d1 double]
+                                   [d2 double])]
+                        [d3 double]))
+    (define s (apply string-append
+                     "_union"
+                     (let loop ([l '(t0 ti ...)])
+                       (cond
+                         [(null? l) '()]
+                         [else (cons (format "_~a" (car l))
+                                     (loop (cdr l)))]))))
+    (check*t T
+             "_struct_uniondoubledouble_double"
+             [99.0 -12.5]
+             [(lambda (a) (ftype-ref T (ds d1) a)) (lambda (a) (ftype-ref T (d3) a))]
+             [(lambda (a) (ftype-set! T (ds d1) a 99.0)) (lambda (a) (ftype-set! T (d3) a -12.5))]))
 
   ;; Check that `__collect_safe` saves argument and result floating-point registers
   ;; while activating and deactivating a thread

@@ -561,7 +561,7 @@
 (define-library-entry (fxand x y) (fxnonfixnum2 'fxand x y))
 (define-library-entry (fxnot x) (fxnonfixnum1 'fxnot x))
 (define-library-entry (fixnum->flonum x) (fxnonfixnum1 'fixnum->flonum x))
-(define-library-entry (fxpopcount x) ($oops 'fxpopcount32 "~s is not a non-negative fixnum" x))
+(define-library-entry (fxpopcount x) ($oops 'fxpopcount "~s is not a non-negative fixnum" x))
 (define-library-entry (fxpopcount32 x) ($oops 'fxpopcount32 "~s is not a 32-bit fixnum" x))
 (define-library-entry (fxpopcount16 x) ($oops 'fxpopcount16 "~s is not a 16-bit fixnum" x))
 
@@ -697,6 +697,8 @@
   (define-library-entry (fl/ x y) (flonum-oops 'fl/ (if (flonum? x) y x)))
   (define-library-entry (flnegate x) (flonum-oops 'fl- x))
   (define-library-entry (flabs x) (flonum-oops 'flabs x))
+  (define-library-entry (flmin x y) (flonum-oops 'flmin (if (flonum? x) y x)))
+  (define-library-entry (flmax x y) (flonum-oops 'flmax (if (flonum? x) y x)))
 
   (define-library-entry (flsqrt x) (flonum-oops 'flsqrt x))
   (define-library-entry (flround x) (flonum-oops 'flround x))

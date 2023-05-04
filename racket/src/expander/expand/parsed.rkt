@@ -35,13 +35,14 @@
 (struct parsed-begin-for-syntax parsed (body) #:authentic)
 
 (struct parsed-#%declare parsed () #:authentic)
-(struct parsed-require parsed () #:authentic)
+(struct parsed-require parsed (portal-syms) #:authentic)
 
 (struct parsed-#%module-begin parsed (body realm) #:authentic)
 (struct parsed-module parsed (star?
                               name-id
                               self
                               requires
+                              recur-requires
                               provides
                               root-ctx-simple?
                               encoded-root-ctx

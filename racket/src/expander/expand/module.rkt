@@ -42,7 +42,8 @@
          "expanded+parsed.rkt"
          "append.rkt"
          "save-and-restore.rkt"
-         "module-prompt.rkt")
+         "module-prompt.rkt"
+         "configure.rkt")
 
 (add-core-form!
  'module
@@ -102,7 +103,7 @@
    (unless (or keep-enclosing-scope-at-phase
                (module-path? initial-require))
      (raise-syntax-error #f "not a module path" s (m 'initial-require)))
-   
+
    ;; All module bodies start at phase 0
    (define phase 0)
    
@@ -200,12 +201,14 @@
      (cond
       [(not keep-enclosing-scope-at-phase)
        ;; Install the initial require
-       (perform-initial-require! initial-require self
+       (define initial-mpi (build-initial-require-mpi initial-require self))
+       (perform-initial-require! initial-mpi self
                                  all-scopes-s
                                  m-ns
                                  requires+provides
                                  #:bind? bind?
-                                 #:who 'module)]
+                                 #:who 'module)
+       initial-mpi]
       [else
        ;; For `(module* name #f ....)`, just register the enclosing module
        ;; as an import and visit it
@@ -218,10 +221,21 @@
                                                    enclosing-mod
                                                    keep-enclosing-scope-at-phase)
        (namespace-module-visit! m-ns enclosing-mod
-                                keep-enclosing-scope-at-phase)]))
+                                keep-enclosing-scope-at-phase)
+       #f]))
    (log-expand init-ctx 'prepare-env)
-   (initial-require! #:bind? #t)
+   (define initial-mpi (initial-require! #:bind? #t))
    (log-expand init-ctx 'rename-one bodys)
+
+   (define-values (paramz exit-paramz)
+     (cond
+       [initial-mpi
+        (define-values (enter exit)
+          (load-configure-expand initial-mpi (namespace-root-namespace m-ns)))
+        (values (enter-configure-parameterization enter) exit)]
+       [else
+        (values (current-parameterization)
+                current-parameterization)]))
 
    ;; To detect whether the body is expanded multiple times:
    (define again? #f)
@@ -537,13 +551,17 @@
    ;; Expand the body
    (define expanded-mb (performance-region
                         ['expand 'module-begin]
-                        (expand mb (struct*-copy expand-context (accumulate-def-ctx-scopes mb-ctx mb-def-ctx-scopes)
-                                                 [def-ctx-scopes #f]))))
+                        (call-with-configure-parameterization
+                         paramz
+                         exit-paramz
+                         (lambda ()
+                           (expand mb (struct*-copy expand-context (accumulate-def-ctx-scopes mb-ctx mb-def-ctx-scopes)
+                                                    [def-ctx-scopes #f]))))))
 
    ;; - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
    ;; Assemble the `module` result
 
-   (define-values (requires provides) (extract-requires-and-provides requires+provides self self))
+   (define-values (requires recur-requires provides) (extract-requires-and-provides requires+provides self self))
 
    (define parsed-mb (if (expanded+parsed? expanded-mb)
                          (expanded+parsed-parsed expanded-mb)
@@ -557,6 +575,7 @@
                          (m 'id:module-name)
                          self
                          requires
+                         recur-requires
                          provides
                          (requires+provides-all-bindings-simple? requires+provides)
                          (root-expand-context-encode-for-module root-ctx self self)
@@ -1208,8 +1227,8 @@
                                       #:realm realm
                                       #:portal-syntaxes portal-syntaxes
                                       #:fill compiled-module-box)
-  
-  (define-values (requires provides) (extract-requires-and-provides requires+provides self self))
+
+  (define-values (requires recur-requires provides) (extract-requires-and-provides requires+provides self self))
 
   (define parsed-mod
     (parsed-module rebuild-s
@@ -1217,6 +1236,7 @@
                    module-name-id
                    self
                    requires
+                   recur-requires
                    provides
                    (requires+provides-all-bindings-simple? requires+provides)
                    (root-expand-context-encode-for-module root-ctx self self)
@@ -1518,7 +1538,8 @@
                                  #:declared-submodule-names declared-submodule-names
                                  #:add-defined-portal add-defined-portal
                                  #:who 'require)
-    (set-requires+provides-all-bindings-simple?! requires+provides #f)))
+    (set-requires+provides-all-bindings-simple?! requires+provides #f)
+    s))
 
 ;; ----------------------------------------
 

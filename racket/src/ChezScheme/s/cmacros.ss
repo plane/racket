@@ -357,7 +357,7 @@
 ;; ---------------------------------------------------------------------
 ;; Version and machine types:
 
-(define-constant scheme-version #x09050906)
+(define-constant scheme-version #x09090911)
 
 (define-syntax define-machine-types
   (lambda (x)
@@ -376,41 +376,45 @@
 (define-machine-types
   any
   pb        tpb
-  pb64l     tpb64l
-  pb64b     tpb64b
   pb32l     tpb32l
   pb32b     tpb32b
-  i3le      ti3le
+  pb64l     tpb64l
+  pb64b     tpb64b
   i3nt      ti3nt
+  i3osx     ti3osx
+  i3le      ti3le
   i3fb      ti3fb
   i3ob      ti3ob
-  i3osx     ti3osx
-  i3gnu     ti3gnu
-  a6le      ta6le
-  a6osx     ta6osx
-  a6ob      ta6ob
-  a6s2      ta6s2
-  i3s2      ti3s2
-  a6fb      ta6fb
   i3nb      ti3nb
-  a6nb      ta6nb
-  a6nt      ta6nt
+  i3s2      ti3s2
   i3qnx     ti3qnx
-  arm32le   tarm32le
-  ppc32le   tppc32le
-  arm64le   tarm64le
-  arm64osx  tarm64osx
+  i3gnu     ti3gnu
+  a6nt      ta6nt
+  a6osx     ta6osx
+  a6le      ta6le
+  a6fb      ta6fb
+  a6ob      ta6ob
+  a6nb      ta6nb
+  a6s2      ta6s2
   ppc32osx  tppc32osx
-  arm32fb   tarm32fb
+  ppc32le   tppc32le
   ppc32fb   tppc32fb
-  arm64fb   tarm64fb
-  arm32ob   tarm32ob
   ppc32ob   tppc32ob
-  arm64ob   tarm64ob
-  arm32nb   tarm32nb
   ppc32nb   tppc32nb
-  arm64nb   tarm64nb
+  arm32le   tarm32le
+  arm32fb   tarm32fb
+  arm32ob   tarm32ob
+  arm32nb   tarm32nb
   arm64nt   tarm64nt
+  arm64osx  tarm64osx
+  arm64le   tarm64le
+  arm64fb   tarm64fb
+  arm64ob   tarm64ob
+  arm64nb   tarm64nb
+  rv64le    trv64le
+  rv64fb    trv64fb
+  rv64ob    trv64ob
+  rv64nb    trv64nb
 )
 
 (include "machine.def")
@@ -592,6 +596,7 @@
   (arm32 reloc-arm32-abs reloc-arm32-call reloc-arm32-jump)
   (arm64 reloc-arm64-abs reloc-arm64-call reloc-arm64-jump)
   (ppc32 reloc-ppc32-abs reloc-ppc32-call reloc-ppc32-jump)
+  (riscv64 reloc-riscv64-abs reloc-riscv64-call reloc-riscv64-jump)
   (pb reloc-pb-abs reloc-pb-proc))
 
 (constant-case ptr-bits
@@ -1739,9 +1744,9 @@
    [ptr link]))
 
 (define-primitive-structure-disps rp-header type-untyped
-  ([uptr toplink]
-   [uptr mv-return-address]
+  ([uptr mv-return-address]
    [ptr livemask]
+   [uptr toplink]
    [iptr frame-size])) ; low bit is 0 to distinguish from a `rp-compact-header`
 (define-constant return-address-mv-return-address-disp
   (- (constant rp-header-mv-return-address-disp) (constant size-rp-header)))
@@ -1880,7 +1885,7 @@
   (discard                  #b00000000000000001000000)
   (single-valued            #b00000000000000010000000)
   (true                 (or #b00000000000000100000000 single-valued))
-  (mifoldable           (or #b00000000000001000000000 single-valued))
+  (mifoldable+              #b00000000000001000000000)
   (cp02                     #b00000000000010000000000)
   (cp03                     #b00000000000100000000000)
   (system-keyword           #b00000000001000000000000)
@@ -1899,6 +1904,7 @@
   (cptypes3x                cptypes2)
   (arith-op                 (or proc pure true))
   (alloc                    (or proc discard true))
+  (mifoldable               (or mifoldable+ single-valued))
   ; would be nice to check that these and only these actually have cp0 partial folders
   (partial-folder           (or cp02 cp03))
   )
@@ -2810,6 +2816,8 @@
      (fl> #f 2 #t #t)
      (fl<= #f 2 #t #t)
      (fl>= #f 2 #t #t)
+     (flmin #f 2 #t #t)
+     (flmax #f 2 #t #t)
      (callcc #f 1 #f #f)
      (display-string #f 2 #f #t)
      (cfl* #f 2 #f #t)

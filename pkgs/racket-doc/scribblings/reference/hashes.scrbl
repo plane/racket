@@ -111,7 +111,9 @@ A literal or printed hash table starts with @litchar{#hash},
 @defproc[(hash? [v any/c]) boolean?]{
 
 Returns @racket[#t] if @racket[v] is a @tech{hash table}, @racket[#f]
-otherwise.}
+otherwise.
+
+See also @racket[immutable-hash?] and @racket[mutable-hash?].}
 
 @defproc[(hash-equal? [hash hash?]) boolean?]{
 
@@ -352,6 +354,15 @@ result:
 
 ]
 
+@examples[
+#:eval the-eval
+(eval:error (hash-ref (hash) "hi"))
+(hash-ref (hash) "hi" 5)
+(hash-ref (hash) "hi" (lambda () "flab"))
+(hash-ref (hash "hi" "bye") "hi")
+(eval:error (hash-ref (hash "hi" "bye") "no"))
+]
+
 @see-also-caveats[]}
 
 @defproc[(hash-ref-key [hash hash?]
@@ -528,7 +539,8 @@ Removes any existing mapping for @racket[key] in @racket[hash].
          (and/c hash? immutable?)]{
 
 Functionally removes any existing mapping for @racket[key] in
-@racket[hash], returning the fresh hash table.
+@racket[hash], returning @racket[hash] (i.e., a result @racket[eq?] to
+@racket[hash]) if @racket[key] is not present in @racket[hash].
 
 @see-also-mutable-key-caveat[]}
 

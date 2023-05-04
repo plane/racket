@@ -1375,6 +1375,7 @@ symbols, and that return a symbol.
       (mandatory-dependent-dom ...)
       dependent-rest
       pre-condition
+      param-value
       dependent-range
       post-condition)
  (->i maybe-chaperone
@@ -1382,6 +1383,7 @@ symbols, and that return a symbol.
       (optional-dependent-dom ...)
       dependent-rest
       pre-condition
+      param-value
       dependent-range
       post-condition)]
 ([maybe-chaperone #:chaperone (code:line)]
@@ -1397,6 +1399,9 @@ symbols, and that return a symbol.
                            expr pre-condition)
                 (code:line #:pre/name (id ...)
                            string boolean-expr pre-condition)]
+ [param-value (code:line)
+              (code:line #:param (id ...)
+                         param-expr val-expr param-value)]
  [dependent-range any
                   id+ctc
                   un+ctc
@@ -1434,6 +1439,13 @@ which it depends. If the @racket[#:pre/name] keyword is used, the string
 supplied is used as part of the error message; similarly with @racket[#:post/name].
 If @racket[#:pre/desc] or @racket[#:post/desc] is used, the the result of
 the expression is treated the same way as @racket[->*].
+
+Following the pre-condition is the optional @racket[param-value] non-terminal
+that specifies parameters to be assigned to during the dynamic extent of the
+function. Each assignment is introduced with the @racket[#:param] keyword followed
+by the list of names on which it depends, a @racket[param-expr] that determines
+the parameter to set, and a @racket[value-expr] that will be associated with
+the parameter.
 
 The @racket[dependent-range] non-terminal specifies the possible result
 contracts. If it is @racket[any], then any value is allowed. Otherwise, the
@@ -1526,6 +1538,8 @@ is supplied:
 In contrast, @racket[_x]'s expression is always evaluated (indeed,
 it is evaluated when the @racket[->i] expression is evaluated because
 it does not have any dependencies).
+
+@history[#:changed "8.7.0.1" @list{Added @racket[#:param].}]
 }
 
 @defform*/subs[#:literals (any values)
@@ -1650,14 +1664,11 @@ be blamed using the above contract:
 ]}
 
 @defthing[predicate/c contract?]{
-  Use this contract to indicate that some function
-  is a predicate. It is semantically equivalent to
-  @racket[(-> any/c boolean?)].
-
-  This contract also includes an optimization so that functions returning
-  @racket[#t] from @racket[struct-predicate-procedure?] are just returned directly, without
-  being wrapped. This contract is used by @racket[provide/contract]'s
-  @racket[struct] sub-form so that struct predicates end up not being wrapped.
+ Equivalent to @racket[(-> any/c boolean?)]. Previously, this contract
+ was necessary as it included an additional optimization that was not
+ included in @racket[->]. Now however, @racket[->] performs the same
+ optimization, so the contract should no longer be used. The contract
+ is still provided for backward compatibility.
 }
 
 @defthing[the-unsupplied-arg unsupplied-arg?]{
@@ -1929,6 +1940,19 @@ Specifically, the symbol @indexed-racket['provide/contract-original-contract]
 is bound to vectors of two elements, the exported identifier and a
 syntax object for the expression that produces the contract controlling
 the export.
+
+@examples[#:eval (contract-eval) #:once
+          (module math-example racket/base
+            (require racket/contract)
+            (code:comment "Compute the reciprocal of a real number")
+            (define (recip x) (/ 1 x))
+            (provide
+             (contract-out
+              [recip (-> (and/c real? (not/c zero?)) real?)])))
+
+          (require 'math-example)
+          (recip 3)
+          (eval:error (recip 1+2i))]
 
 @history[#:changed "7.3.0.3" @list{Added @racket[#:unprotected-submodule].}
          #:changed "7.7.0.9" @list{Started ignoring @racket[ignored-id].}]

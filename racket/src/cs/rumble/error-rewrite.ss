@@ -58,6 +58,7 @@
                 fxarithmetic-shift-right fxrshift
                 fxarithmetic-shift-left fxlshift
                 fxsll/wraparound fxlshift/wraparound
+                fxsrl fxrshift/logical
                 real->flonum ->fl
                 time-utc->date seconds->date
                 make-record-type-descriptor* make-struct-type)
@@ -186,15 +187,15 @@
                     (cadr irritants))
             null)]
    [(equal? str "mask of stencil vector ~s does not have all bits in ~s")
-    (values (string-append "mask of stencil vector does not have all bits in removal mask\n"
-                           "  stencil vector: ~s\n"
-                           "  removal mask: ~s")
-            irritants)]
+    (format-error-values (string-append "mask of stencil vector does not have all bits in removal mask\n"
+                                        "  stencil vector: ~s\n"
+                                        "  removal mask: ~s")
+                         irritants)]
    [(equal? str "mask of stencil vector ~s already has bits in ~s")
-    (values (string-append "mask of stencil vector already has bits in addition mask\n"
-                           "  stencil vector: ~s\n"
-                           "  addition mask: ~s")
-            irritants)]
+    (format-error-values (string-append "mask of stencil vector already has bits in addition mask\n"
+                                        "  stencil vector: ~s\n"
+                                        "  addition mask: ~s")
+                         irritants)]
    [else
     (format-error-values str irritants)]))
 

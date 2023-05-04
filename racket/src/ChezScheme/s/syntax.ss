@@ -6406,7 +6406,7 @@
          (unless (source-object? src) (syntax-error src "profile subform is not a source object"))
          (build-input-profile src))])))
 
-(global-extend 'core 'begin-unsafe
+(global-extend 'core '$begin-unsafe
   (lambda (e r w ae)
     (syntax-case e ()
       ((_ e1 e2 ...)
@@ -7319,7 +7319,9 @@
                       (let ([slow (strip-outer slow)])
                         (if (eq? fast slow)
                             ($oops who "cyclic list structure ~s" x)
-                            (f (cdr fast) (cdr slow)))))]
+                            (if (pair? slow)
+                                (f (cdr fast) (cdr slow))
+                                ($oops who "improper list structure ~s" x)))))]
                    [else ($oops who "improper list structure ~s" x)])))]
             [else ($oops who "improper list structure ~s" x)]))))))
 

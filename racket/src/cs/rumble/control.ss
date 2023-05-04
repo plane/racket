@@ -267,8 +267,8 @@
 (define (call-in-empty-metacontinuation-frame tag handler new-splice proc)
   ;; Call `proc` in an empty metacontinuation frame, reifying the
   ;; current metacontinuation as a new frame on `current-metacontinuation`
-  (assert-in-uninterrupted)
-  (assert-not-in-system-wind)
+  (assert-in-uninterrupted 'call-in-empty-metacontinuation-frame)
+  (assert-not-in-system-wind 'call-in-empty-metacontinuation-frame)
   (call/cc
    (lambda (resume-k)
      (let ([marks (current-mark-stack)]) ; grab marks before `#%$call-in-continuation`
@@ -322,8 +322,8 @@
 
 ;; Simplified `call-in-empty-metacontinuation-frame` suitable for swapping engines:
 (define (call-with-empty-metacontinuation-frame-for-swap proc)
-  (assert-in-uninterrupted)
-  (assert-not-in-system-wind)
+  (assert-in-uninterrupted 'call-with-empty-metacontinuation-frame-for-swap)
+  (assert-not-in-system-wind 'call-with-empty-metacontinuation-frame-for-swap)
   (call/cc
    (lambda (resume-k)
      (let ([marks (current-mark-stack)])
@@ -404,21 +404,21 @@
   (check who continuation-prompt-tag? tag)
   (maybe-future-barricade tag)
   (check-prompt-tag-available who (strip-impersonator tag))
-  (start-uninterrupted 'abort)
   (let ([args (apply-impersonator-abort-wrapper tag args)]
         [tag (strip-impersonator tag)])
+    (start-uninterrupted 'abort)
     (do-abort-current-continuation who tag args #t)))
 
 (define/who (unsafe-abort-current-continuation/no-wind tag arg)
-  (start-uninterrupted 'abort)
   (let ([args (apply-impersonator-abort-wrapper tag (list arg))]
         [tag (strip-impersonator tag)])
+    (start-uninterrupted 'abort)
     (do-abort-current-continuation who tag args #f)))
 
 ;; `args` can be a thunk if `do-abort-current-continuation` is
 ;; called via `apply-continuation`
 (define (do-abort-current-continuation who tag args wind?)
-  (assert-in-uninterrupted)
+  (assert-in-uninterrupted 'do-abort-current-continuation)
   (cond
    [(null? (current-metacontinuation))
     ;; A reset handler must end the uninterrupted region:
@@ -446,7 +446,7 @@
         (do-abort-current-continuation who tag args wind?)]))]
    [else
     (wind-to
-     '()
+     (winders-length (current-winders)) 0 '()
      ;; No winders left:
      (lambda ()
        (do-abort-current-continuation who tag args #t))
@@ -474,6 +474,10 @@
 (define/who (call-with-continuation-barrier p)
   (check who (procedure-arity-includes/c 0) p)
   (start-uninterrupted 'barrier)
+  (call-with-continuation-barrier* p))
+
+(define/who (call-with-continuation-barrier* p)
+  (assert-in-uninterrupted 'call-with-continuation-barrier*)
   (call-in-empty-metacontinuation-frame
    the-barrier-prompt-tag ; <- recognized as a barrier by continuation capture or call
    #f
@@ -595,7 +599,7 @@
       [(not (composable-continuation-wind? c))
        (apply-immediate-continuation/no-wind c args)]
       [else
-       (apply-immediate-continuation c (reverse (continuation-mc c)) args)]))))
+       (apply-immediate-continuation c (reverse (continuation-mc c)) args 0 0)]))))
 
 ;; Applying an escape continuation calls this internal function:
 (define (apply-escape-continuation c args)
@@ -613,7 +617,7 @@
   (apply-non-composable-continuation* c args))
 
 (define (apply-non-composable-continuation* c args)
-  (assert-in-uninterrupted)
+  (assert-in-uninterrupted 'apply-non-composable-continuation*)
   (let ([mc (current-metacontinuation)]
         [c-mc (continuation-mc c)]
         [tag (full-continuation-tag c)])
@@ -642,39 +646,44 @@
                     (find-common-metacontinuation c-mc
                                                   mc
                                                   (strip-impersonator tag))])
-        (let loop ()
-          (cond
-           [(eq? common-mc (current-metacontinuation))
-            ;; Replace the current metacontinuation frame's continuation
-            ;; with the saved one; this replacement will take care of any
-            ;; shared winders within the frame.
-            (apply-immediate-continuation c rmc-append args)]
-           [else
-            ;; Unwind this metacontinuation frame:
-            (wind-to
-             '()
-             ;; If all winders complete simply:
-             (lambda ()
-               (pop-metacontinuation-frame)
-               (loop))
-             ;; If a winder changes the metacontinuation, then
-             ;; start again:
-             (lambda ()
-               (apply-non-composable-continuation* c args)))])))])))
+        (let-values ([(exit-winder-n     ; number of source winders we need to exit
+                       entered-winder-n) ; number of destination winders we *don't* need to enter
+                      (count-exit+entered-continuation-winders common-mc c rmc-append)])
+          (let loop ([exit-winder-n exit-winder-n])
+            (cond
+              [(eq? common-mc (current-metacontinuation))
+               ;; Replace the current metacontinuation frame's continuation
+               ;; with the saved one; this replacement will take care of any
+               ;; shared winders within the frame.
+               (apply-immediate-continuation c rmc-append args exit-winder-n entered-winder-n)]
+              [else
+               ;; Unwind this metacontinuation frame:
+               (let ([exit-winder-now-n (fxmin exit-winder-n
+                                               (winders-length (current-winders)))])
+                 (wind-to
+                  exit-winder-now-n 0 '()
+                  ;; If all winders complete simply:
+                  (lambda ()
+                    (pop-metacontinuation-frame)
+                    (loop (fx- exit-winder-n exit-winder-now-n)))
+                  ;; If a winder changes the metacontinuation, then
+                  ;; start again:
+                  (lambda ()
+                    (apply-non-composable-continuation* c args))))]))))])))
 
 ;; Apply a continuation within the current metacontinuation frame:
-(define (apply-immediate-continuation c rmc args)
-  (assert-in-uninterrupted)
-  (apply-continuation-with-appended-metacontinuation rmc c args))
+(define (apply-immediate-continuation c rmc args exit-winder-n entered-winder-n)
+  (assert-in-uninterrupted 'apply-immediate-continuation)
+  (apply-continuation-with-appended-metacontinuation rmc c args exit-winder-n entered-winder-n))
 
-(define (apply-continuation-within-metacontinuation c args)
+(define (apply-continuation-within-metacontinuation c args exit-winder-n entered-winder-n)
   (let ([mark-stack (full-continuation-mark-stack c)])
     (current-mark-splice (let ([mark-splice (full-continuation-mark-splice c)])
                            (if (composable-continuation? c)
                                (merge-mark-splice mark-splice (current-mark-splice))
                                mark-splice)))
     (wind-to
-     (full-continuation-winders c)
+     exit-winder-n entered-winder-n (full-continuation-winders c)
      ;; When no winders are left:
      (lambda ()
        (when (non-composable-continuation? c)
@@ -712,6 +721,7 @@
 ;; with the composable continuation's metacontinuation (so we
 ;; should not unwind and rewind those metacontinuation frames)
 (define (find-common-metacontinuation mc current-mc tag)
+  (assert-in-uninterrupted 'find-common-metacontinuation)
   (let-values ([(rev-current ; (list (cons mf mc) ...)
                  base-current-mc)
                 ;; Get the reversed prefix of `current-mc` that is to be
@@ -721,6 +731,7 @@
                    [(null? current-mc)
                     (unless (or (eq? tag the-default-continuation-prompt-tag)
                                 (eq? tag the-root-continuation-prompt-tag))
+                      (end-uninterrupted 'tag-error)
                       (raise-no-prompt-tag '|continuation application| tag))
                     (values accum null)]
                    [(eq? tag (strip-impersonator (metacontinuation-frame-tag (car current-mc))))
@@ -758,6 +769,7 @@
           (values (cdr (cdar rev-current)) rev-mc)])))))
 
 (define (check-for-barriers rev-mc)
+  (assert-in-uninterrupted 'check-for-barriers)
   (unless (null? rev-mc)
     (when (eq? (metacontinuation-frame-tag (car rev-mc))
                the-barrier-prompt-tag)
@@ -825,37 +837,39 @@
                             exn:fail:contract:continuation
                             (list "tag" tag)))
 
-(define (apply-continuation-with-appended-metacontinuation rmc dest-c dest-args)
+(define (apply-continuation-with-appended-metacontinuation rmc dest-c dest-args exit-winder-n entered-winder-n)
   ;; Assumes that the current metacontinuation frame is ready to be
   ;; replaced with `mc` (reversed as `rmc`) plus `proc`.
-  ;; In the simple case of no winders and an empty frame immediate
-  ;;  metacontinuation fame, we could just
+  ;; In the simple case of no winders and an empty immediate
+  ;; metacontinuation frame, we could just
   ;;  (current-metacontinuation (append mc (current-metacontinuation)))
   ;; But, to run winders and replace anything in the current frame,
   ;; we proceed frame-by-frame in `mc`.
-  (assert-in-uninterrupted)
-  (let loop ([rmc rmc])
+  (assert-in-uninterrupted 'apply-continuation-with-appended-metacontinuation)
+  (let loop ([rmc rmc] [exit-winder-n exit-winder-n] [entered-winder-n entered-winder-n])
     (cond
-     [(null? rmc) (apply-continuation-within-metacontinuation dest-c dest-args)]
-     [else
-      (let ([mf (maybe-merge-splice (composable-continuation? dest-c)
-                                    (metacontinuation-frame-clear-cache (car rmc)))]
-            [rmc (cdr rmc)])
-        ;; Set splice before jumping, so it can be used by winders
-        (current-mark-splice (metacontinuation-frame-mark-splice mf))
-        ;; Run "in" winders for the metacontinuation
-        (wind-to
-         (metacontinuation-frame-winders mf)
-         ;; When all winders done for this frame:
-         (lambda ()
-           (current-metacontinuation (cons mf (current-metacontinuation)))
-           (current-winders '())
-           (loop rmc))
-         ;; When a winder changes the metacontinuation, try again
-         ;; for a non-composable continuation:
-         (and (non-composable-continuation? dest-c)
-              (lambda ()
-                (apply-non-composable-continuation* dest-c dest-args)))))])))
+      [(null? rmc)
+       (apply-continuation-within-metacontinuation dest-c dest-args exit-winder-n entered-winder-n)]
+      [else
+       (let ([mf (maybe-merge-splice (composable-continuation? dest-c)
+                                     (metacontinuation-frame-clear-cache (car rmc)))]
+             [rmc (cdr rmc)])
+         ;; Set splice before jumping, so it can be used by winders
+         (current-mark-splice (metacontinuation-frame-mark-splice mf))
+         ;; Run "in" winders for the metacontinuation
+         (let ([entered-winder-now-n (fxmin entered-winder-n
+                                            (winders-length (metacontinuation-frame-winders mf)))])
+           (wind-to
+            exit-winder-n entered-winder-now-n (metacontinuation-frame-winders mf)
+            ;; When all winders done for this frame:
+            (lambda ()
+              (current-metacontinuation (cons mf (current-metacontinuation)))
+              (loop rmc 0 (fx- entered-winder-n entered-winder-now-n)))
+            ;; When a winder changes the metacontinuation, try again
+            ;; for a non-composable continuation:
+            (and (non-composable-continuation? dest-c)
+                 (lambda ()
+                   (apply-non-composable-continuation* dest-c dest-args))))))])))
 
 (define (metacontinuation-frame-clear-cache mf)
   (metacontinuation-frame-update-mark-splice mf
@@ -1736,6 +1750,7 @@
 
 (define (apply-prompt-tag-interposition who at-when what
                                         wrapper args chaperone?)
+  (assert-not-in-uninterrupted 'apply-prompt-tag-interposition)
   (call-with-values (lambda () (apply wrapper args))
     (lambda new-args
       (unless (= (length args) (length new-args))
@@ -1766,6 +1781,7 @@
      [else handler])))
 
 (define (apply-impersonator-abort-wrapper tag args)
+  (assert-not-in-uninterrupted 'apply-impersonator-abort-wrapper)
   (let loop ([tag tag] [args args])
     (cond
      [(continuation-prompt-tag-impersonator-or-chaperone? tag)
@@ -1782,7 +1798,7 @@
      [else args])))
 
 (define (activate-and-wrap-cc-guard-for-impersonator! tag)
-  (assert-in-uninterrupted)
+  (assert-in-uninterrupted 'activate-and-wrap-cc-guard-for-impersonator!)
   (current-metacontinuation
    (let loop ([mc (current-metacontinuation)])
      (cond
@@ -1831,21 +1847,21 @@
    [else guard]))
 
 (define (wrap-cc-guard-for-impersonator tag cc-guard)
-  (assert-in-uninterrupted)
+  (assert-in-uninterrupted 'wrap-cc-guard-for-impersonator)
   (cond
    [(continuation-prompt-tag-impersonator-or-chaperone? tag)
     (let ([cc-impersonate (continuation-prompt-tag-procs-cc-impersonate
                            (continuation-prompt-tag-impersonator-or-chaperone-procs tag))]
           [chaperone? (continuation-prompt-tag-chaperone? tag)])
       (let ([cc-guard (wrap-cc-guard-for-impersonator (impersonator-next tag) cc-guard)])
-        (let ([new-cc-guard (call-with-continuation-barrier
+        (let ([new-cc-guard (call-with-continuation-barrier*
                              (lambda ()
-                               (end-uninterrupted 'cc-guard)
-                               (begin0
-                                (|#%app| cc-impersonate cc-guard)
-                                (start-uninterrupted 'cc-guard))))])
+                               (assert-not-in-uninterrupted 'cc-guard)
+                               (|#%app| cc-impersonate cc-guard)))])
+          (start-uninterrupted 'post-cc-guard)
           (when chaperone?
             (unless (chaperone-of? new-cc-guard cc-guard)
+              (end-uninterrupted 'cc-guard-fail)
               (raise-chaperone-error 'call-with-current-continuation
                                      "continuation-result guard"
                                      cc-guard
@@ -1859,7 +1875,12 @@
 
 (define-virtual-register current-winders '())
 
-(define-record winder (depth k marks pre post))
+(define-record winder (length k marks pre post))
+
+(define (winders-length winders)
+  (if (null? winders)
+      0
+      (winder-length (car winders))))
 
 ;; Jobs for `dynamic-wind`:
 
@@ -1882,8 +1903,8 @@
    (lambda (k) ; continuation to restore while running pre/post thunk to unwind/rewind
      (let* ([winders (current-winders)]
             [winder (make-winder (if (null? winders)
-                                     0
-                                     (fx+ 1 (winder-depth (car winders))))
+                                     1
+                                     (fx+ 1 (winder-length (car winders))))
                                  k
                                  (current-mark-stack)
                                  pre
@@ -1921,7 +1942,7 @@
   (do-wind 'dw-post (current-winders) winder-post k))
 
 (define (do-wind who winders winder-thunk k)
-  (assert-in-uninterrupted)
+  (assert-in-uninterrupted 'do-wind)
   (let ([winder (car winders)]
         [winders (cdr winders)])
     (current-winders winders)
@@ -1933,46 +1954,122 @@
          (call-winder-thunk who thunk)
          (k))))))
 
-(define (wind-to dest-winders done-k retry-k)
+(define (wind-to exit-winder-n entered-winder-n dest-winders done-k retry-k)
   (let ([starting-metacontinuation (current-metacontinuation)])
-    (let loop ([rev-dest-winders-head '()]
-               [dest-winders-tail dest-winders])
+    (let loop ([exit-winder-n exit-winder-n])
       (cond
-       [(and retry-k
-             (not (eq? starting-metacontinuation (current-metacontinuation))))
-        (retry-k)]
-       [else
-        (let ([winders (current-winders)])
-          (cond
-           [(same-winders? winders dest-winders-tail)
-            ;; No winders to leave
-            (cond
-             [(null? rev-dest-winders-head)
-              (done-k)]
+        [(and retry-k
+              (not (eq? starting-metacontinuation (current-metacontinuation))))
+         (retry-k)]
+        [(fx> exit-winder-n 0)
+         ;; Go out by one winder
+         (wind-out (lambda () (loop (fx- exit-winder-n 1))))]
+        [else
+         (let loop ([rev-dest-winders '()]
+                    [dest-winders dest-winders])
+           (cond
+             [(fx< entered-winder-n (winders-length dest-winders))
+              ;; move winder to `rev-dest-winders`
+              (loop (cons (car dest-winders) rev-dest-winders) (cdr dest-winders))]
              [else
-              ;; Go in one winder
-              (let ([new-winders (cons (car rev-dest-winders-head) winders)]
-                    [rev-dest-winders-head (cdr rev-dest-winders-head)])
-                (wind-in new-winders
-                         (lambda ()
-                           (current-winders new-winders)
-                           (loop rev-dest-winders-head new-winders))))])]
-           [(or (null? dest-winders-tail)
-                (and (pair? winders)
-                     (> (winder-depth (car winders)) (winder-depth (car dest-winders-tail)))))
-            ;; Go out by one winder
-            (wind-out (lambda () (loop rev-dest-winders-head dest-winders-tail)))]
-           [else
-            ;; Move a dest winder from tail to head:
-            (loop (cons (car dest-winders-tail) rev-dest-winders-head)
-                  (cdr dest-winders-tail))]))]))))
+              (current-winders dest-winders)
+              (let loop ([rev-dest-winders rev-dest-winders])
+                (cond
+                  [(and retry-k
+                        (not (eq? starting-metacontinuation (current-metacontinuation))))
+                   (retry-k)]
+                  [(null? rev-dest-winders)
+                   (done-k)]
+                  [else
+                   ;; Go in one winder
+                   (let ([dest-winders (cons (car rev-dest-winders) (current-winders))]
+                         [rev-dest-winders (cdr rev-dest-winders)])
+                     (wind-in dest-winders
+                              (lambda ()
+                                (current-winders dest-winders)
+                                (loop rev-dest-winders))))]))]))]))))
 
 (define (same-winders? winders dest-winders-tail)
   (or (and (null? winders)
            (null? dest-winders-tail))
       (and (pair? winders)
            (pair? dest-winders-tail)
+           ;; a winder record can exist at most once within a metacontinuation
+           ;; frame, and then the tail must be the same, so it's enough to check
+           ;; the first item's identity
            (eq? (car winders) (car dest-winders-tail)))))
+
+(define (count-exit+entered-continuation-winders common-mc c rmc-append)
+  ;; Find the common tail of
+  ;;  * winders of the current metacontinuation up to `common-mc`
+  ;;  * immediate winders of `c` plus those of `rmc-append`,
+  ;;    which corresponds to the target metacontinuation up to `common-mc`
+  ;; The difference of the length of the first input minus the common
+  ;; tail length is the number of winders that we'll need to exit.
+  ;; The length of the common tail is the number that we do not
+  ;; need to enter.
+  (cond
+    [(and (null? rmc-append)
+          (eq? (current-metacontinuation) common-mc))
+     ;; Simpler case: the source and destination winders are
+     ;; each in a single list, and we can use the `length` field
+     ;; to find a common part without reversing anything
+     (let loop ([src-winders (current-winders)]
+                [dest-winders (full-continuation-winders c)]
+                [exit-n 0])
+       (cond
+         [(null? src-winders) (values exit-n 0)]
+         [(null? dest-winders) (values (fx+ exit-n (winder-length (car src-winders))) 0)]
+         [else
+          (let ([src-i (winder-length (car src-winders))]
+                [dest-i (winder-length (car dest-winders))])
+            (cond
+              [(fx= src-i dest-i)
+               (let loop ([src-winders src-winders]
+                          [dest-winders dest-winders]
+                          [exit-n exit-n])
+                 (cond
+                   [(null? src-winders) (values exit-n 0)]
+                   [(eq? (car src-winders) (car dest-winders))
+                    (values exit-n (winder-length (car dest-winders)))]
+                   [else
+                    (loop (cdr src-winders) (cdr dest-winders) (fx+ exit-n 1))]))]
+              [(fx< src-i dest-i)
+               (loop src-winders (list-tail dest-winders (fx- dest-i src-i)) exit-n)]
+              [else
+               (let ([delta (fx- src-i dest-i)])
+                 (loop (list-tail src-winders delta) dest-winders (fx+ exit-n delta)))]))]))]
+    [else
+     ;; This could be made faster, perhaps, by taking advantage of depth
+     ;; information instead of flatting out both winder lists. But at least
+     ;; it's linear time in the length of two winder lists.
+     (let loop ([mc (current-metacontinuation)]
+                [rev-src-winders (reverse (current-winders))])
+       (cond
+         [(eq? mc common-mc)
+          (cond
+            [(null? rev-src-winders) (values 0 0)]
+            [else
+             (let loop ([rev-src-winders rev-src-winders]
+                        [rev-dest-winders
+                         (let loop ([rmc-append rmc-append])
+                           (cond
+                             [(null? rmc-append) (reverse (full-continuation-winders c))]
+                             [else (append (reverse (metacontinuation-frame-winders (car rmc-append)))
+                                           (loop (cdr rmc-append)))]))]
+                        [n (length rev-src-winders)]
+                        [common-n 0])
+               (if (or (null? rev-src-winders)
+                       (null? rev-dest-winders)
+                       (not (eq? (car rev-src-winders)
+                                 (car rev-dest-winders))))
+                   (values n common-n)
+                   (loop (cdr rev-src-winders) (cdr rev-dest-winders) (fx- n 1) (fx+ common-n 1))))])]
+         [else
+          (let ([mf (car mc)])
+            (loop (cdr mc)
+                  (append (reverse (metacontinuation-frame-winders mf))
+                          rev-src-winders)))]))]))
 
 ;; ----------------------------------------
 
@@ -2071,10 +2168,10 @@
                   (current-system-wind-start-k start-k)
                   (system-wind-k prefix)))))))
 
-(define (assert-not-in-system-wind)
+(define (assert-not-in-system-wind who)
   (CHECK-uninterrupted
    (when (current-system-wind-start-k)
-     (internal-error 'not-in-system-wind "assertion failed"))))
+     (internal-error 'not-in-system-wind (format "~a: assertion failed" who)))))
 
 ;; ----------------------------------------
 

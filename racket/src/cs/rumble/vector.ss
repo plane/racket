@@ -9,12 +9,23 @@
 
 ;; ----------------------------------------
 
-(define (vector-immutable . args)
-  (if (null? args)
-      (vector->immutable-vector '#())
-      (let ([vec (apply vector args)])
-        (#%$vector-set-immutable! vec)
-        vec)))
+(define vector-immutable
+  (case-lambda
+   [() (vector->immutable-vector '#())]
+   [args (let ([vec (apply vector args)])
+           (#%$vector-set-immutable! vec)
+           vec)]))
+
+(define-syntax (inline:vector-immutable stx)
+  (syntax-case stx ()
+    [(_) #'(vector->immutable-vector '#())]
+    [(_ arg ...)
+     #'(let ([vec (vector arg ...)])
+         (#%$vector-set-immutable! vec)
+         vec)]
+    [(_ . args)
+     #'(vector-immutable . args)]
+    [_ #'vector-immutable]))
 
 ;; ----------------------------------------
 
@@ -27,6 +38,11 @@
   (or (#%mutable-vector? v)
       (and (impersonator? v)
            (#%mutable-vector? (impersonator-val v)))))
+
+(define (immutable-vector? v)
+  (or (#%immutable-vector? v)
+      (and (impersonator? v)
+           (#%immutable-vector? (impersonator-val v)))))
 
 ;; ----------------------------------------
 

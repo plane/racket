@@ -896,14 +896,13 @@
    #f
    'rx:alts))
 (define struct:rx:alts
-  (make-record-type-descriptor*
+  (make-record-type-descriptor
    'rx:alts
    #f
    (|#%nongenerative-uid| rx:alts)
    #f
    #f
-   2
-   0))
+   '(2 . 0)))
 (define effect_2414 (finish_2542 struct:rx:alts))
 (define rx:alts1.1
   (|#%name|
@@ -950,14 +949,13 @@
    #f
    'rx:sequence))
 (define struct:rx:sequence
-  (make-record-type-descriptor*
+  (make-record-type-descriptor
    'rx:sequence
    #f
    (|#%nongenerative-uid| rx:sequence)
    #f
    #f
-   2
-   0))
+   '(2 . 0)))
 (define effect_2459 (finish_2732 struct:rx:sequence))
 (define rx:sequence2.1
   (|#%name|
@@ -1014,14 +1012,13 @@
    #f
    'rx:group))
 (define struct:rx:group
-  (make-record-type-descriptor*
+  (make-record-type-descriptor
    'rx:group
    #f
    (|#%nongenerative-uid| rx:group)
    #f
    #f
-   2
-   0))
+   '(2 . 0)))
 (define effect_1819 (finish_2954 struct:rx:group))
 (define rx:group3.1
   (|#%name|
@@ -1069,14 +1066,13 @@
    #f
    'rx:repeat))
 (define struct:rx:repeat
-  (make-record-type-descriptor*
+  (make-record-type-descriptor
    'rx:repeat
    #f
    (|#%nongenerative-uid| rx:repeat)
    #f
    #f
-   4
-   0))
+   '(4 . 0)))
 (define effect_2312 (finish_1837 struct:rx:repeat))
 (define rx:repeat4.1
   (|#%name|
@@ -1151,14 +1147,13 @@
    #f
    'rx:maybe))
 (define struct:rx:maybe
-  (make-record-type-descriptor*
+  (make-record-type-descriptor
    'rx:maybe
    #f
    (|#%nongenerative-uid| rx:maybe)
    #f
    #f
-   2
-   0))
+   '(2 . 0)))
 (define effect_2202 (finish_3260 struct:rx:maybe))
 (define rx:maybe5.1
   (|#%name|
@@ -1211,14 +1206,13 @@
    #f
    'rx:conditional))
 (define struct:rx:conditional
-  (make-record-type-descriptor*
+  (make-record-type-descriptor
    'rx:conditional
    #f
    (|#%nongenerative-uid| rx:conditional)
    #f
    #f
-   6
-   0))
+   '(6 . 0)))
 (define effect_2905 (finish_2500 struct:rx:conditional))
 (define rx:conditional6.1
   (|#%name|
@@ -1342,14 +1336,13 @@
    #f
    'rx:lookahead))
 (define struct:rx:lookahead
-  (make-record-type-descriptor*
+  (make-record-type-descriptor
    'rx:lookahead
    #f
    (|#%nongenerative-uid| rx:lookahead)
    #f
    #f
-   4
-   0))
+   '(4 . 0)))
 (define effect_2486 (finish_2488 struct:rx:lookahead))
 (define rx:lookahead7.1
   (|#%name|
@@ -1436,14 +1429,13 @@
    #f
    'rx:lookbehind))
 (define struct:rx:lookbehind
-  (make-record-type-descriptor*
+  (make-record-type-descriptor
    'rx:lookbehind
    #f
    (|#%nongenerative-uid| rx:lookbehind)
    #f
    #f
-   6
-   12))
+   '(6 . 12)))
 (define effect_2468 (finish_3095 struct:rx:lookbehind))
 (define rx:lookbehind8.1
   (|#%name|
@@ -1599,14 +1591,13 @@
    #f
    'rx:cut))
 (define struct:rx:cut
-  (make-record-type-descriptor*
+  (make-record-type-descriptor
    'rx:cut
    #f
    (|#%nongenerative-uid| rx:cut)
    #f
    #f
-   4
-   0))
+   '(4 . 0)))
 (define effect_2158 (finish_2346 struct:rx:cut))
 (define rx:cut9.1
   (|#%name|
@@ -1678,14 +1669,13 @@
    #f
    'rx:reference))
 (define struct:rx:reference
-  (make-record-type-descriptor*
+  (make-record-type-descriptor
    'rx:reference
    #f
    (|#%nongenerative-uid| rx:reference)
    #f
    #f
-   2
-   0))
+   '(2 . 0)))
 (define effect_2306 (finish_1921 struct:rx:reference))
 (define rx:reference10.1
   (|#%name|
@@ -1744,14 +1734,13 @@
    #f
    'rx:range))
 (define struct:rx:range
-  (make-record-type-descriptor*
+  (make-record-type-descriptor
    'rx:range
    #f
    (|#%nongenerative-uid| rx:range)
    #f
    #f
-   1
-   0))
+   '(1 . 0)))
 (define effect_2071 (finish_2471 struct:rx:range))
 (define rx:range11.1
   (|#%name|
@@ -1790,14 +1779,13 @@
    #f
    'rx:unicode-categories))
 (define struct:rx:unicode-categories
-  (make-record-type-descriptor*
+  (make-record-type-descriptor
    'rx:unicode-categories
    #f
    (|#%nongenerative-uid| rx:unicode-categories)
    #f
    #f
-   2
-   0))
+   '(2 . 0)))
 (define effect_2341 (finish_2339 struct:rx:unicode-categories))
 (define rx:unicode-categories12.1
   (|#%name|
@@ -2059,14 +2047,13 @@
    #f
    'parse-config))
 (define struct:parse-config
-  (make-record-type-descriptor*
+  (make-record-type-descriptor
    'parse-config
    #f
    (|#%nongenerative-uid| parse-config)
    #f
    #f
-   7
-   0))
+   '(7 . 0)))
 (define effect_2622 (finish_2581 struct:parse-config))
 (define parse-config1.1
   (|#%name|
@@ -2377,10 +2364,15 @@
                            (if (unsafe-fx< index_0 8)
                              (range-add
                               (let ((range_0
-                                     (begin-unsafe
-                                      (range-union
-                                       null
-                                       (list (cons 97 122))))))
+                                     (let ((range_0
+                                            (begin-unsafe
+                                             (range-union
+                                              null
+                                              (list (cons 48 57))))))
+                                       (begin-unsafe
+                                        (range-union
+                                         range_0
+                                         (list (cons 97 122)))))))
                                 (begin-unsafe
                                  (range-union range_0 (list (cons 65 90)))))
                               95)
@@ -3074,7 +3066,7 @@
         (if (if (eqv? tmp_0 '#\x3f)
               #t
               (if (eqv? tmp_0 '#\x2a) #t (eqv? tmp_0 '#\x2b)))
-          (let ((fmt_0 "nested `~a` in patten"))
+          (let ((fmt_0 "nested `~a` in pattern"))
             (let ((args_0 (list (integer->char (chytes-ref$1 s_0 pos_0)))))
               (let ((fmt_1 fmt_0))
                 (begin-unsafe (apply regexp-error fmt_1 args_0)))))
@@ -4017,88 +4009,89 @@
                 (let ((app_0 (convert (rx:alts-rx_2265 rx_0))))
                   (rx-alts app_0 (convert (rx:alts-rx_1912 rx_0)) 255))
                 (if (rx:sequence? rx_0)
-                  (if (rx:sequence? rx_0)
-                    (let ((rxs1_0
-                           (reverse$1
-                            (let ((lst_0 (rx:sequence-rxs rx_0)))
-                              (begin
-                                (letrec*
-                                 ((for-loop_0
-                                   (|#%name|
-                                    for-loop
-                                    (lambda (fold-var_0 lst_1)
-                                      (begin
-                                        (if (pair? lst_1)
-                                          (let ((rx_1 (unsafe-car lst_1)))
-                                            (let ((rest_0 (unsafe-cdr lst_1)))
-                                              (let ((fold-var_1
-                                                     (let ((fold-var_1
-                                                            (cons
-                                                             (convert rx_1)
-                                                             fold-var_0)))
-                                                       (values fold-var_1))))
-                                                (for-loop_0
-                                                 fold-var_1
-                                                 rest_0))))
-                                          fold-var_0))))))
-                                 (for-loop_0 null lst_0)))))))
-                      (rx:sequence2.1
-                       rxs1_0
-                       (rx:sequence-needs-backtrack? rx_0)))
-                    (raise-argument-error 'struct-copy "rx:sequence?" rx_0))
+                  (let ((new-rxs_0
+                         (reverse$1
+                          (let ((lst_0 (rx:sequence-rxs rx_0)))
+                            (begin
+                              (letrec*
+                               ((for-loop_0
+                                 (|#%name|
+                                  for-loop
+                                  (lambda (fold-var_0 lst_1)
+                                    (begin
+                                      (if (pair? lst_1)
+                                        (let ((rx_1 (unsafe-car lst_1)))
+                                          (let ((rest_0 (unsafe-cdr lst_1)))
+                                            (let ((fold-var_1
+                                                   (let ((fold-var_1
+                                                          (cons
+                                                           (convert rx_1)
+                                                           fold-var_0)))
+                                                     (values fold-var_1))))
+                                              (for-loop_0 fold-var_1 rest_0))))
+                                        fold-var_0))))))
+                               (for-loop_0 null lst_0)))))))
+                    (if (rx:sequence? rx_0)
+                      (let ((needs-backtrack?2_0
+                             (ormap_2765 needs-backtrack? new-rxs_0)))
+                        (rx:sequence2.1 new-rxs_0 needs-backtrack?2_0))
+                      (raise-argument-error 'struct-copy "rx:sequence?" rx_0)))
                   (if (rx:group? rx_0)
                     (if (rx:group? rx_0)
-                      (let ((rx2_0 (convert (rx:group-rx rx_0))))
-                        (rx:group3.1 rx2_0 (rx:group-number rx_0)))
+                      (let ((rx3_0 (convert (rx:group-rx rx_0))))
+                        (rx:group3.1 rx3_0 (rx:group-number rx_0)))
                       (raise-argument-error 'struct-copy "rx:group?" rx_0))
                     (if (rx:repeat? rx_0)
                       (if (rx:repeat? rx_0)
-                        (let ((rx3_0 (convert (rx:repeat-rx rx_0))))
+                        (let ((rx4_0 (convert (rx:repeat-rx rx_0))))
                           (let ((app_0 (rx:repeat-min rx_0)))
                             (let ((app_1 (rx:repeat-max rx_0)))
                               (rx:repeat4.1
-                               rx3_0
+                               rx4_0
                                app_0
                                app_1
                                (rx:repeat-non-greedy? rx_0)))))
                         (raise-argument-error 'struct-copy "rx:repeat?" rx_0))
                       (if (rx:maybe? rx_0)
                         (if (rx:maybe? rx_0)
-                          (let ((rx4_0 (convert (rx:maybe-rx rx_0))))
-                            (rx:maybe5.1 rx4_0 (rx:maybe-non-greedy? rx_0)))
+                          (let ((rx5_0 (convert (rx:maybe-rx rx_0))))
+                            (rx:maybe5.1 rx5_0 (rx:maybe-non-greedy? rx_0)))
                           (raise-argument-error 'struct-copy "rx:maybe?" rx_0))
                         (if (rx:conditional? rx_0)
-                          (if (rx:conditional? rx_0)
-                            (let ((tst5_0 (convert (rx:conditional-tst rx_0))))
-                              (let ((rx16_0
-                                     (convert (rx:conditional-rx_2162 rx_0))))
-                                (let ((rx27_0
-                                       (convert
-                                        (rx:conditional-rx_2328 rx_0))))
-                                  (let ((rx16_1 rx16_0) (tst5_1 tst5_0))
-                                    (let ((app_0
-                                           (rx:conditional-n-start rx_0)))
-                                      (let ((app_1
-                                             (rx:conditional-num-n rx_0)))
+                          (let ((new-rx1_0
+                                 (convert (rx:conditional-rx_2162 rx_0))))
+                            (let ((new-rx2_0
+                                   (convert (rx:conditional-rx_2328 rx_0))))
+                              (if (rx:conditional? rx_0)
+                                (let ((tst6_0
+                                       (convert (rx:conditional-tst rx_0))))
+                                  (let ((needs-backtrack?9_0
+                                         (let ((or-part_0
+                                                (needs-backtrack? new-rx1_0)))
+                                           (if or-part_0
+                                             or-part_0
+                                             (needs-backtrack? new-rx2_0)))))
+                                    (let ((tst6_1 tst6_0))
+                                      (let ((app_0
+                                             (rx:conditional-n-start rx_0)))
                                         (rx:conditional6.1
-                                         tst5_1
-                                         rx16_1
-                                         rx27_0
+                                         tst6_1
+                                         new-rx1_0
+                                         new-rx2_0
                                          app_0
-                                         app_1
-                                         (rx:conditional-needs-backtrack?
-                                          rx_0))))))))
-                            (raise-argument-error
-                             'struct-copy
-                             "rx:conditional?"
-                             rx_0))
+                                         (rx:conditional-num-n rx_0)
+                                         needs-backtrack?9_0)))))
+                                (raise-argument-error
+                                 'struct-copy
+                                 "rx:conditional?"
+                                 rx_0))))
                           (if (rx:lookahead? rx_0)
                             (if (rx:lookahead? rx_0)
-                              (let ((rx8_0 (convert (rx:lookahead-rx rx_0))))
+                              (let ((rx10_0 (convert (rx:lookahead-rx rx_0))))
                                 (let ((app_0 (rx:lookahead-match? rx_0)))
                                   (let ((app_1 (rx:lookahead-n-start rx_0)))
                                     (rx:lookahead7.1
-                                     rx8_0
+                                     rx10_0
                                      app_0
                                      app_1
                                      (rx:lookahead-num-n rx_0)))))
@@ -4108,7 +4101,7 @@
                                rx_0))
                             (if (rx:lookbehind? rx_0)
                               (if (rx:lookbehind? rx_0)
-                                (let ((rx9_0
+                                (let ((rx11_0
                                        (convert (rx:lookbehind-rx rx_0))))
                                   (let ((app_0 (rx:lookbehind-match? rx_0)))
                                     (let ((app_1 (rx:lookbehind-lb-min rx_0)))
@@ -4117,7 +4110,7 @@
                                         (let ((app_3
                                                (rx:lookbehind-n-start rx_0)))
                                           (rx:lookbehind8.1
-                                           rx9_0
+                                           rx11_0
                                            app_0
                                            app_1
                                            app_2
@@ -4128,19 +4121,20 @@
                                  "rx:lookbehind?"
                                  rx_0))
                               (if (rx:cut? rx_0)
-                                (if (rx:cut? rx_0)
-                                  (let ((rx10_0 (convert (rx:cut-rx rx_0))))
-                                    (let ((app_0 (rx:cut-n-start rx_0)))
-                                      (let ((app_1 (rx:cut-num-n rx_0)))
+                                (let ((new-rx_0 (convert (rx:cut-rx rx_0))))
+                                  (if (rx:cut? rx_0)
+                                    (let ((needs-backtrack?13_0
+                                           (needs-backtrack? rx_0)))
+                                      (let ((app_0 (rx:cut-n-start rx_0)))
                                         (rx:cut9.1
-                                         rx10_0
+                                         new-rx_0
                                          app_0
-                                         app_1
-                                         (rx:cut-needs-backtrack? rx_0)))))
-                                  (raise-argument-error
-                                   'struct-copy
-                                   "rx:cut?"
-                                   rx_0))
+                                         (rx:cut-num-n rx_0)
+                                         needs-backtrack?13_0)))
+                                    (raise-argument-error
+                                     'struct-copy
+                                     "rx:cut?"
+                                     rx_0)))
                                 rx_0))))))))))))))))
 (define range->alts
   (lambda (args_0)
@@ -4631,14 +4625,13 @@
    #f
    'lazy-bytes))
 (define struct:lazy-bytes
-  (make-record-type-descriptor*
+  (make-record-type-descriptor
    'lazy-bytes
    #f
    (|#%nongenerative-uid| lazy-bytes)
    #f
    #f
-   13
-   3075))
+   '(13 . 3075)))
 (define effect_2741 (finish_2590 struct:lazy-bytes))
 (define lazy-bytes1.1
   (|#%name|
@@ -5843,11 +5836,11 @@
       (if (let ((or-part_0 (= pos_0 start_0)))
             (if or-part_0
               or-part_0
-              (=
-               10
-               (if (bytes? s_0)
-                 (unsafe-bytes-ref s_0 (sub1 pos_0))
-                 (lazy-bytes-ref s_0 (sub1 pos_0))))))
+              (if (bytes? s_0)
+                (= 10 (unsafe-bytes-ref s_0 (sub1 pos_0)))
+                (if (lazy-bytes-before-end? s_0 (sub1 pos_0) limit_0)
+                  (= 10 (lazy-bytes-ref s_0 (sub1 pos_0)))
+                  #f))))
         (|#%app| next-m_0 s_0 pos_0 start_0 limit_0 end_0 state_0 stack_0)
         #f))))
 (define line-end-matcher
@@ -5880,10 +5873,11 @@
               (if or-part_0
                 or-part_0
                 (not
-                 (word-byte?
-                  (if (bytes? s_0)
-                    (unsafe-bytes-ref s_0 (sub1 pos_0))
-                    (lazy-bytes-ref s_0 (sub1 pos_0)))))))))
+                 (if (bytes? s_0)
+                   (word-byte? (unsafe-bytes-ref s_0 (sub1 pos_0)))
+                   (if (lazy-bytes-before-end? s_0 (sub1 pos_0) end_0)
+                     (word-byte? (lazy-bytes-ref s_0 (sub1 pos_0)))
+                     #f)))))))
        (eq?
         app_0
         (let ((or-part_0
@@ -7156,14 +7150,13 @@
    #f
    'rx:regexp))
 (define struct:rx:regexp
-  (make-record-type-descriptor*
+  (make-record-type-descriptor
    'regexp
    #f
    (|#%nongenerative-uid| regexp)
    #f
    #f
-   10
-   0))
+   '(10 . 0)))
 (define effect_2726 (finish_2797 struct:rx:regexp))
 (define rx:regexp1.1
   (|#%name|

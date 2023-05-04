@@ -23,11 +23,12 @@ AC_ARG_ENABLE(compressmore, [  --enable-compressmore   compress compiled code ev
 AC_ARG_ENABLE(compressboot, [  --enable-compressboot   compress boot files])
 m4_include(../ac/path_arg.m4)
 AC_ARG_ENABLE(racket,     [  --enable-racket=<path>  use <path> as Racket for build; or "auto" to create])
-AC_ARG_ENABLE(scheme,     [  --enable-scheme=<path>  use <path> as host build for cross])
+AC_ARG_ENABLE(scheme,     [  --enable-scheme=<path>  use <path> as Chez Scheme for build])
 AC_ARG_ENABLE(mach,       [  --enable-mach=<mach>    use Chez Scheme machine type <mach>])
 AC_ARG_ENABLE(target,     [  --enable-target=<mach>  cross-build for Chez Scheme machine type <mach>])
 AC_ARG_ENABLE(pb,         [  --enable-pb             build for platform without native-code backend])
 AC_ARG_ENABLE(pbchunk,    [  --enable-pbchunk        enable C chunks for pb boot (enabled by default)])
+AC_ARG_ENABLE(check,      [  --enable-check          enable extra safety checks for testing])
 m4_include(../ac/portable_arg.m4)
 m4_include(../ac/natipkg_arg.m4)
 m4_include(../ac/sdk_arg.m4)
@@ -99,6 +100,7 @@ show_explicitly_enabled "${enable_iconv}" "iconv"
 show_explicitly_disabled "${enable_iconv}" "iconv"
 show_explicitly_enabled "${enable_curses}" "curses"
 show_explicitly_disabled "${enable_curses}" "curses"
+show_explicitly_enabled "${enable_check}" "Extra checks"
 
 m4_include(../ac/vm.m4)
 
@@ -188,6 +190,8 @@ PBCHUNK_MODE=plain
 if test "${CC_FOR_BUILD}" = ""; then
   CC_FOR_BUILD='$(CC) -O2'
 fi
+
+ENABLE_EXTRA_CHECKS=no
 
 ###### Autoconfigure #######
 
@@ -422,6 +426,10 @@ case "$MACH_HOST_CPU" in
     MACH="${thread_prefix}ppc32${MACH_OS}"
     pb_machine_name="${thread_prefix}pb32b"
     ;;
+  riscv64*)
+    MACH="${thread_prefix}rv64${MACH_OS}"
+    pb_machine_name="${thread_prefix}pb64l"
+    ;;
 esac
 
 if test "${MACH}" = "" ; then
@@ -517,6 +525,9 @@ if test "${build_os}_${build_cpu}" != "${host_os}_${host_cpu}" ; then
       ;;
     power*)
       BUILD_MACH="${BUILD_THREAD_PREFIX}ppc32${BUILD_OS}"
+      ;;
+    riscv64*)
+      BUILD_MACH="${BUILD_THREAD_PREFIX}rv64${BUILD_OS}"
       ;;
     *)
       echo "unknown build CPU"
@@ -743,6 +754,12 @@ AC_CHECK_SIZEOF([void *])
 
 m4_include(../ac/valid_sizeof.m4)
 
+############## etxra checks ################
+
+if test "${enable_check}" = "yes" ; then
+  ENABLE_EXTRA_CHECKS=yes
+fi
+
 ############## subconfigure ################
 
 # Before libtool setup
@@ -896,6 +913,7 @@ AC_SUBST(CROSS_COMPILE_TARGET_KIND)
 AC_SUBST(CS_INSTALLED)
 AC_SUBST(CS_COMPILED_SUBDIR)
 AC_SUBST(DISABLE_WPO)
+AC_SUBST(ENABLE_EXTRA_CHECKS)
 AC_SUBST(SCHEME_LIBFFI)
 AC_SUBST(PBCHUNK_MODE)
 AC_SUBST(INSTALL_SETUP_FLAGS)

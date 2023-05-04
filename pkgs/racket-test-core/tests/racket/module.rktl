@@ -517,6 +517,24 @@
 
   (void))
 
+;; make sure `provide` isn't confused by a rename transformer
+
+(module should-be-an-ok-provide-for-space racket/base
+  (require (for-syntax racket/base))
+  (define-syntax (go stx)
+    #`(begin
+        (provide (for-space example_space x))
+        (define x 'ok)
+        (define-syntax #,((make-interned-syntax-introducer 'example_space) #'x)
+          (make-rename-transformer (quote-syntax x)))))
+  (go))
+
+;; make sure `for-space #f` works
+
+(module should-be-an-ok-provide-for-default-space racket/base
+  (provide (for-space #f x))
+  (define x "ok"))
+
 ;; ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Test proper bindings for `#%module-begin'
 
@@ -850,6 +868,11 @@
   (test '(nested) cdr (resolved-module-path-name m)))
 
 (test #f module-declared? '(submod no-such-collection/x nested) #t)
+
+;; don't call the resolver in this case:
+(err/rt-test (module-path-index-resolve (module-path-index-join #f #f))
+             exn:fail:contract?
+             #rx"^module-path-index-resolve")
 
 ;; ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; provide a source-location syntax object to `module-path-index-resolve`
@@ -4084,6 +4107,31 @@ case of module-leve bindings; it doesn't cover local bindings.
       (dynamic-require ''#%kernel 'call-with-values)
       (lambda () 'cwv-ok)
       (chaperone-procedure (lambda (v) v) (lambda (v) v)))
+
+;; ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; regression test aimed at instantiation via shifting up and back down
+
+(let ()
+  (define ns (make-base-namespace))
+  (define ns2 (make-base-namespace))
+
+  (define d
+    (parameterize ([current-namespace ns])
+      (eval '(module zo racket/base
+               (require (for-template racket/base))))
+      (define d
+        (compile '(module d racket/base
+                    (require 'zo
+                             racket/phase+space)
+                    phase+space)))
+      (eval d)
+      (dynamic-require ''d #f)
+      d))
+
+  (parameterize ([current-namespace ns2])
+    (namespace-attach-module ns ''zo)
+    (eval d)
+    (dynamic-require ''d #f)))
 
 ;; ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 

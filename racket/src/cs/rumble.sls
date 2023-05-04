@@ -285,8 +285,10 @@
           eq-hash-code
           eqv-hash-code
           equal-hash-code
+          equal-hash-code/recur
           equal-secondary-hash-code
           equal-always-hash-code
+          equal-always-hash-code/recur
           equal-always-secondary-hash-code
 
           hash hasheqv hasheq hashalw
@@ -314,6 +316,8 @@
           unsafe-hash-seal!    ; not exported to racket
 
           hash? hash-eq? hash-equal? hash-eqv? hash-equal-always? hash-strong? hash-weak? hash-ephemeron?
+          immutable-hash?
+          (rename [-mutable-hash? mutable-hash?])
           hash-count
           hash-keys-subset?
           eq-hashtable->hash   ; not exported to racket
@@ -333,7 +337,7 @@
           make-bytes make-shared-bytes
           bytes-ref bytes-set!
           bytes->list list->bytes
-          bytes->immutable-bytes
+          bytes->immutable-bytes immutable-bytes? mutable-bytes?
           bytes-copy! bytes-copy bytes-fill!
           bytes=? bytes<? bytes>?
           bytes-append
@@ -342,6 +346,7 @@
           make-string
           string-copy!
           substring
+          immutable-string? mutable-string?
 
           char-blank?
           char-iso-control?
@@ -368,14 +373,14 @@
                   [|#%ormap| ormap])
 
           vector?
-          mutable-vector?
+          immutable-vector? mutable-vector?
           make-vector
           (rename [inline:vector-length vector-length]
                   [inline:vector-ref vector-ref]
                   [inline:vector-set! vector-set!])
           vector-copy
           vector-copy!
-          vector-immutable
+          (rename [inline:vector-immutable vector-immutable])
           vector->values
           vector-fill!
           vector->immutable-vector
@@ -396,6 +401,7 @@
                   [inline:set-box! set-box!])
           unbox* set-box*!
           make-weak-box weak-box? weak-box-value
+          immutable-box? mutable-box?
           impersonate-box
           chaperone-box
           unbox/check-undefined    ; not exported to Racket
@@ -440,6 +446,7 @@
           fxrshift
           fxlshift
           fxlshift/wraparound
+          fxrshift/logical
           fl->fx
           ->fl
           fl->exact-integer
@@ -567,6 +574,7 @@
           unsafe-fxxor
           unsafe-fxnot
           unsafe-fxrshift
+          unsafe-fxrshift/logical
           unsafe-fxlshift
           unsafe-fx+/wraparound
           unsafe-fx-/wraparound
@@ -743,6 +751,7 @@
           unsafe-struct*-ref
           unsafe-struct*-set!
           unsafe-struct*-cas!
+          unsafe-struct*-type
           unsafe-struct?        ; not exported to racket
           unsafe-sealed-struct? ; not exported to racket
           unsafe-struct         ; not exported to racket
@@ -880,7 +889,8 @@
 
   ;; in case of early pauses to check for GC:
   (timer-interrupt-handler void)
-  
+
+  (init-flonum-printing!)
   (set-no-locate-source!)
   ;; Note: if there's a bug in `rumble` that causes exception handling to error,
   ;; the the following line will cause the error to loop with another error, etc.,

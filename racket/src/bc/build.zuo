@@ -68,6 +68,8 @@
                                       (string-upcase (or (lookup 'MMM_INSTALLED)
                                                          "BC"))))
 
+  (define wxvariant-def (~a (or (lookup 'WXVARIANT) "wx_xt") "=1"))
+
   (define rktio-dir (at-dir "rktio"))
   (define librktio.a+rktio_config.h (setup-rktio (at-source "../rktio") rktio-dir config))
   (define librktio.a (list-ref librktio.a+rktio_config.h 0))
@@ -109,6 +111,11 @@
   (define mzdyn3m.o (at-dir (if windows? "mzdyn3m.obj" (orig:.c->.o "mzdyn3m.c"))))
   (define mzdyncgc.exp (at-dir "mzdyn.exp"))
   (define mzdyn3m.exp (at-dir "mzdyn3m.exp"))
+
+  (define foreigncgc.o
+    (at-dir (.c->.o "src/foreign.c")))
+  (define foreign3m.o
+    (at-dir (.c->.o "xsrc/foreign.c")))
 
   (define src-names/no-startup-or-third-party
     '("salloc.c"
@@ -191,12 +198,17 @@
          src-names))
   (define startup.o (car cgc-objs))
 
+  (define cgc-all-objs
+    (append
+     cgc-objs
+     (if foreign? (list foreigncgc.o) '())))
+
   ;; See "phase1/cstartup.inc" below for information on phase1
   ;; versus phase2 of the build
   (define startup1.o (at-dir (.c->.o "src/startup1.c")))
-  (define cgc-obj1s
+  (define cgc-all-obj1s
     (cons startup1.o
-          (cdr cgc-objs)))
+          (cdr cgc-all-objs)))
 
   (define 3m-src-names
     (cons "startup.c"
@@ -212,7 +224,8 @@
      (map (lambda (name)
             (at-dir "src" (.c->.o (file-name-from-path name))))
           third-party-src-names)
-     3m-objs))
+     3m-objs
+     (if foreign? (list foreign3m.o) '())))
 
   (define sgc.o
     (at-dir (.c->.o "sgc/sgc.c")))
@@ -234,11 +247,6 @@
   (define grmain3m.o
     (at-dir (.c->.o "xsrc/grmain.c")))
   
-  (define foreigncgc.o
-    (at-dir (.c->.o "src/foreign.c")))
-  (define foreign3m.o
-    (at-dir (.c->.o "xsrc/foreign.c")))
-
   (define libffi.a
     (and libffi?
          (find-target (.a "ffi") libffi-targets)))
@@ -568,13 +576,11 @@
 
   (define cgc-link-inputs ; omits libracketcgc.a
     (append
-     (if foreign? (list foreigncgc.o) '())
      (list libracketgc.a librktio.a)
      (if libffi? (list libffi.a) '())))
 
   (define 3m-link-inputs
     (append
-     (if foreign? (list foreign3m.o) '())
      (list librktio.a)
      (if libffi? (list libffi.a) '())))
 
@@ -898,7 +904,7 @@
            (list libracketcgc1.a libracketcgc.a libracket3m.a)
            (list libracketcgc1.def libracketcgc.def libracket3m.def)
            (list cgc-link-inputs cgc-link-inputs 3m-link-inputs)
-           (list cgc-obj1s cgc-objs 3m-all-objs))
+           (list cgc-all-obj1s cgc-all-objs 3m-all-objs))
 
         ;; Windows DLL import libraries
         ,@(map
@@ -973,7 +979,7 @@
                                     objs)
                                 (shell-subst-value config 'AR)))])
            (list libracketcgc1.a libracketcgc.a libracket3m.a)
-           (list cgc-obj1s cgc-objs (list* newgc.o 3m-all-objs)))
+           (list cgc-all-obj1s cgc-all-objs (list* newgc.o 3m-all-objs)))
 
         ;; SGC (CGC garbage collector)
         [:target ,libracketgc.a (,@libracketgc-link-objs)
@@ -1221,7 +1227,7 @@
                (list maincgc1.o maincgc.o grmaincgc.o)
                (list (at-source "main.c") (at-source "main.c") (at-source "gracket/grmain.c"))
                (list #f #f #t)
-               (list '("DLL_3M_SUFFIX=\"1\"") '() '()))
+               (list '("DLL_3M_SUFFIX=\"1\"") '() (list wxvariant-def)))
 
         ;; FFI compiled for CGC
         [:target ,foreigncgc.o (,(at-source "foreign/foreign.c")
@@ -1272,7 +1278,8 @@
                             ,@quiet-deps)
                            ,(lambda (path token)
                               (xform path main.c 'no-precomp token
-                                     (make-directory-defs gracket?)))])
+                                     (build-shell (make-directory-defs gracket?)
+                                                  (~a "-D" wxvariant-def))))])
                (list (at-source "main.c") (at-source "gracket/grmain.c"))
                (list #f #t))
 

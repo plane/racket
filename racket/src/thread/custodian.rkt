@@ -34,6 +34,7 @@
          unsafe-custodian-unregister
          custodian-register-thread
          custodian-register-place
+         custodian-register-also
          custodian-shutdown-root-at-exit
          raise-custodian-is-shut-down
          unsafe-add-post-custodian-shutdown
@@ -171,6 +172,12 @@
 
 (define (custodian-register-place cust obj callback)
   (do-custodian-register cust obj callback #:weak? #t #:gc-root? #t))
+
+(define (custodian-register-also cref obj callback at-exit? weak?)
+  (assert-atomic-mode)
+  (define c (custodian-reference->custodian cref))
+  (unless (hash-ref (custodian-children c) obj #f)
+    (unsafe-custodian-register c obj callback at-exit? weak?)))
 
 (define (unsafe-custodian-unregister obj cref)
   (when cref
@@ -647,13 +654,14 @@
             (custodian-memory-use c)]))))
 
 (define (custodian-check-immediate-limit mref n)
-  (let loop ([mref mref])
-    (when mref
-      (define c (custodian-reference->custodian mref))
-      (when c
-        (define limit (custodian-immediate-limit c))
-        (when (and limit (n . >= . limit))
-          (raise (exn:fail:out-of-memory
-                  (error-message->string #f "out of memory")
-                  (current-continuation-marks))))
-        (loop (custodian-parent-reference c))))))
+  (unless (in-atomic-mode?)
+    (let loop ([mref mref])
+      (when mref
+        (define c (custodian-reference->custodian mref))
+        (when c
+          (define limit (custodian-immediate-limit c))
+          (when (and limit (n . >= . limit))
+            (raise (exn:fail:out-of-memory
+                    (error-message->string #f "out of memory")
+                    (current-continuation-marks))))
+          (loop (custodian-parent-reference c)))))))

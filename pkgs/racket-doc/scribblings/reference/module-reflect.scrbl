@@ -197,7 +197,7 @@ The @racket[current-module-name-resolver] binding is provided as
          @elem{Added special treatment of @racket[submod] forms with a
                nonexistent collection by the default module name
                resolver.}
-         #:changed "8.2.0.4" @elem{Changed binding to protected.}]}
+         #:changed "8.2.0.4" @elem{Changed binding to @tech{protected}.}]}
 
 
 @defparam[current-module-declare-name name (or/c resolved-module-path? #f)]{
@@ -313,6 +313,11 @@ the last argument to the @tech{module name resolver}, while the
 Beware that concurrent resolution in namespaces that share a module
 registry can create race conditions when loading modules. See also
 @racket[namespace-call-with-registry-lock].
+
+If @racket[mpi] represents a ``self'' (see above) module path that was
+not created by the expander as already resolved, then
+@racket[module-path-index-resolve] raises @racket[exn:fail:contract]
+without calling the module name resolver.
 
 See also @racket[resolve-module-path-index].
 
@@ -665,7 +670,7 @@ more than the namespace's @tech{base phase}.}
          boolean?]{
 
 Returns @racket[#t] if the module indicated by @racket[mod] is
-declared (but not necessarily @tech{instantiate}d or @tech{visit}ed)
+@tech{declare}d (but not necessarily @tech{instantiate}d or @tech{visit}ed)
 in the current namespace, @racket[#f] otherwise.
 
 If @racket[load?] is @racket[#t] and @racket[mod] is not a

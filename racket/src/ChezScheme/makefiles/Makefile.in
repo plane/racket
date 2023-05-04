@@ -29,6 +29,10 @@ uninstall: $(ZUO)
 test: $(ZUO)
 	$(ZUO) $(workarea) test MAKE="$(MAKE)"
 
+.PHONY: test-some-fast
+test-some-fast: $(ZUO)
+	$(ZUO) $(workarea) test-some-fast MAKE="$(MAKE)"
+
 .PHONY: test-some
 test-some: $(ZUO)
 	$(ZUO) $(workarea) test-some MAKE="$(MAKE)"
@@ -76,7 +80,7 @@ re.boot: $(ZUO)
 # with o=3 d=0 for the cross compiler, and only after
 # building the kernel for the configured machine
 .PHONY: bootquick
-bootquick:
+bootquick: $(ZUO)
 	$(ZUO) $(workarea) bootquick "$(XM)" MAKE="$(MAKE)"
 
 # `<machine>.bootquick` as alias for `boot XM=<machine>`
@@ -90,7 +94,7 @@ auto.bootquick: $(ZUO)
 # <machine> with pbchunk sources, including additional
 # boot files
 .PHONY: bootpbchunk
-bootpbchunk:
+bootpbchunk: $(ZUO)
 	$(ZUO) $(workarea) bootpbchunk "$(XM)" $(ARGS) MAKE="$(MAKE)"
 
 # `<machine>.bootpbchunk` as alias for `pbchunk XM=<machine>`

@@ -145,6 +145,7 @@
     fd-close
     fd-read
     fd-write
+    fd-poll
     eof
     fd-terminal?
     file->string
@@ -166,6 +167,7 @@
     file-name-from-path
     path->complete-path
     ls* rm* cp* mkdir-p
+    :no-replace-mode
     :error :truncate :must-truncate :append :update :can-update
     cleanable-file
     cleanable-cancel
@@ -191,6 +193,7 @@
     build-module-path
     kernel-env
     kernel-eval
+    dynamic-require
 
     runtime-env
     dump-image-and-exit
@@ -232,8 +235,11 @@
     build-shell
 
     call-in-main-thread
-    thread? thread channel? channel channel-put channel-get
+    thread? thread channel? channel channel-put channel-get channel-try-get
     thread-process-wait
-    config-file->hash))
+    config-file->hash
+
+    maybe-jobserver-client
+    maybe-jobserver-jobs))
 
 (intro-define-fake)

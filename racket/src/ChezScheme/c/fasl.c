@@ -276,6 +276,12 @@ static U32 adjust_delay_inst(U32 delay_inst, U32 *old_call_addr, U32 *new_call_a
 static INT sparc64_set_lit_only(void *address, uptr item, I32 destreg);
 static void sparc64_set_literal(void *address, uptr item);
 #endif /* SPARC64 */
+#ifdef RISCV64
+static void riscv64_set_abs(void *address, uptr item);
+static uptr riscv64_get_abs(void *address);
+static void riscv64_set_jump(void *address, uptr item);
+static uptr riscv64_get_jump(void *address);
+#endif /* RISCV64 */
 #ifdef PORTABLE_BYTECODE_SWAPENDIAN
 static void swap_code_endian(octet *code, uptr len);
 #endif
@@ -421,16 +427,16 @@ static uptr uf_uptrin(unbufFaslFile uf, INT *bytes_consumed) {
 }
 
 char *S_format_scheme_version(uptr n) {
-  static char buf[20]; INT len;
+  static char buf[40]; INT len;
   if ((n >> 24) != ((n >> 24) & 0xffff)) return "unknown";
   if ((n & 0xff) == 0) {
     if ((n & 0xff) == 0)
-      len = snprintf(buf, 20, "%d.%d", (int) n >> 24, (int) (n >> 16) & 0xff);
+      len = snprintf(buf, sizeof(buf), "%d.%d", (int) n >> 24, (int) (n >> 16) & 0xff);
     else
-      len = snprintf(buf, 20, "%d.%d.%d", (int) n >> 24, (int) (n >> 16) & 0xff, 
+      len = snprintf(buf, sizeof(buf), "%d.%d.%d", (int) n >> 24, (int) (n >> 16) & 0xff,
                      (int) (n >> 8) & 0xff);
   } else
-    len = snprintf(buf, 20, "%d.%d.%d.%d", (int) n >> 24, (int) (n >> 16) & 0xff, 
+    len = snprintf(buf, sizeof(buf), "%d.%d.%d-pre-release.%d", (int) n >> 24, (int) (n >> 16) & 0xff,
                    (int) (n >> 8) & 0xff, (int) n & 0xff);
   return len > 0 ? buf : "unknown";
 }
@@ -1119,9 +1125,10 @@ static void faslin(ptr tc, ptr *x, ptr t, ptr *pstrbuf, faslFile f) {
             *x = S_phantom_bytevector(uptrin(f));
             return;
         case fasl_type_graph: {
-            uptr len = uptrin(f), len2, i;
+            uptr len = uptrin(f), len2 = uptrin(f), tlen = (uptr)Svector_length(t), i;
             ptr new_t = S_vector(len);
-            len2 = Svector_length(t);
+            if ((tlen < len2) && (len2 != 0)) /* allowing a vector when not needed helps with `load-compiled-from-port` */
+              S_error2("", "incompatible external vector length ~d, expected ~d", FIX(tlen), FIX(len2));
             if (len2 > len) len2 = len;
             for (i = 0; i < len2; i++)
               INITVECTIT(new_t, i+(len-len2)) = Svector_ref(t, i);
@@ -1470,6 +1477,15 @@ void S_set_code_obj(char *who, IFASLCODE typ, ptr p, iptr n, ptr x, iptr o) {
             *(U32 *)address = *(U32 *)address & ~0x3fffffff | item >> 2 & 0x3fffffff;
             break;
 #endif /* SPARC */
+#ifdef RISCV64
+        case reloc_riscv64_abs:
+        case reloc_riscv64_call:
+          riscv64_set_abs(address, item);
+          break;
+        case reloc_riscv64_jump:
+          riscv64_set_jump(address, item);
+          break;
+#endif /* RISCV64 */
         default:
             S_error1(who, "invalid relocation type ~s", FIX(typ));
     }
@@ -1550,6 +1566,15 @@ ptr S_get_code_obj(IFASLCODE typ, ptr p, iptr n, iptr o) {
             item += (uptr)address;
             break;
 #endif /* SPARC */
+#ifdef RISCV64 //@ todo
+        case reloc_riscv64_abs:
+        case reloc_riscv64_call:
+          item = riscv64_get_abs(address);
+          break;
+        case reloc_riscv64_jump:
+          item = riscv64_get_jump(address);
+          break;
+#endif /* RISCV64 */
         default:
             S_error1("", "invalid relocation type ~s", FIX(typ));
             return (ptr)0 /* not reached */;
@@ -1640,7 +1665,7 @@ static uptr arm32_get_jump(void *address) {
 #define SHIFT48_OPCODE 0x00600000
 
 static void arm64_set_abs(void *address, uptr item) {
-  /* First word can have an arbitrary value due to vfasl offset
+  /* First instruction can have an arbitrary value due to vfasl offset
      storage, so get the target register from the end: */
   int dest_reg = ((U32 *)address)[3] & DEST_REG_MASK;
   
@@ -1853,8 +1878,7 @@ static uptr sparc64_get_literal(void *address) {
   return item;
 }
 
-static U32 adjust_delay_inst(delay_inst, old_call_addr, new_call_addr)
-      U32 delay_inst; U32 *old_call_addr, *new_call_addr; {
+static U32 adjust_delay_inst(U32 delay_inst, U32 *old_call_addr, U32 *new_call_addr) {
   INT offset;
 
   offset = sizeof(U32) * (old_call_addr - new_call_addr);
@@ -1960,6 +1984,63 @@ static void sparc64_set_literal(void* address, uptr item) {
   sparc64_set_lit_only(address, item, destreg);
 }
 #endif /* SPARC64 */
+
+#ifdef RISCV64
+static uptr riscv64_get_abs(void* address)
+{
+  return *((I64 *)((I32 *)address + 3));
+}
+
+static uptr riscv64_get_jump(void* address)
+{
+  return *((I64 *)((I32 *)address + 3));
+}
+
+#define AUIPC_INSTR(dest, offset)   (0x17 | ((dest) << 7) | ((offset) << 12))
+#define LD_INSTR(dest, src, offset) (0x03 | ((dest) << 7) | (3 << 12) | ((src) << 15) | ((offset) << 20))
+#define EXTRACT_LD_INSTR_DEST(instr) ((instr >> 7) & 0x1F)
+#define REAL_ZERO_REG 0
+#define JUMP_REG 30
+
+static void riscv64_set_abs(void* address, uptr item)
+{
+  /*
+     Code sequence:
+
+     [0] auipc dest, 0
+     [1] ld dest, dest, 16
+     [2] jal %real-zero, 16
+     [3-4] 8-bytes of addr
+     [5] jalr - in case of call
+
+    Although vfasl may have overwritten the first instruction,
+    so we need to extract `dest` from the second.
+  */
+  int dest = EXTRACT_LD_INSTR_DEST(((I32 *)address)[1]);
+  ((I32 *)address)[0] = AUIPC_INSTR(dest, 0);
+
+  (*((I64 *)((I32 *)address + 3))) = item;
+}
+
+static void riscv64_set_jump(void* address, uptr item)
+{
+  /*
+     Code sequence:
+
+    [0] auipc %jump, 0
+    [1] ld %jump, %jump, 12
+    [2] jal %real_zero, 12
+    [3] 8-bytes of addr
+    [5] jalr
+
+    Although vfasl may have overwritten the first instruction,
+    it's always the same, so we can reconstruct it.
+  */
+  ((I32 *)address)[0] = AUIPC_INSTR(JUMP_REG, 0);
+
+  (*((I64 *)((I32 *)address + 3))) = item;
+}
+#endif /* RISCV64 */
 
 #ifdef PORTABLE_BYTECODE_SWAPENDIAN
 typedef struct {

@@ -1457,11 +1457,26 @@ static double s_pow(double x, double y) { return powl(x, y); }
 static double s_pow(double x, double y) { return pow(x, y); }
 #endif /* i3fb/ti3fb */
 
+#ifdef __MINGW32__
+/* cos() and sin() do not handle large values nicely,
+   so use fmod() to get reasonably close */
+# define INTO_SINCOS_RANGE(x) (((x > 1e9) || (x < -1e9)) \
+			       ? fmod(x, 2*atan2(0.0, -1.0)) \
+			       : x)
+/* asinh() and atanh() sometimes get zero sign wrong */
+# define CHECK_ASINTAN_ZERO(x, e) ((x == 0.0) \
+                                   ? (signbit(x) ? -0.0 : 0.0)  \
+                                   : e)
+#else
+# define INTO_SINCOS_RANGE(x) x
+# define CHECK_ASINTAN_ZERO(x, e) e
+#endif
+
 static double s_sqrt(double x) { return sqrt(x); }
 
-static double s_sin(double x) { return sin(x); }
+static double s_sin(double x) { return sin(INTO_SINCOS_RANGE(x)); }
 
-static double s_cos(double x) { return cos(x); }
+static double s_cos(double x) { return cos(INTO_SINCOS_RANGE(x)); }
 
 static double s_tan(double x) { return tan(x); }
 
@@ -1490,11 +1505,11 @@ static double s_trunc(double x) { return trunc(x); }
 static double s_hypot(double x, double y) { return HYPOT(x, y); }
 
 #ifdef ARCHYPERBOLIC
-static double s_asinh(double x) { return asinh(x); }
+static double s_asinh(double x) { return CHECK_ASINTAN_ZERO(x, asinh(x)); }
 
 static double s_acosh(double x) { return acosh(x); }
 
-static double s_atanh(double x) { return atanh(x); }
+static double s_atanh(double x) { return CHECK_ASINTAN_ZERO(x, atanh(x)); }
 #endif /* ARCHHYPERBOLIC */
 
 #ifdef LOG1P
@@ -1544,19 +1559,20 @@ static void s_putenv(char *name, char *value) {
 
 #ifdef PTHREADS
 /* backdoor thread is for testing thread creation by Sactivate_thread */
-#define display(s) { const char *S = (s); if (WRITE(1, S, (unsigned int)strlen(S))) {} }
-static s_thread_rv_t s_backdoor_thread_start(void *p) {
-  display("backdoor thread started\n")
+#define display(s) do { const char *S = (s); if (WRITE(1, S, (unsigned int)strlen(S))) {} } while(0)
+static s_thread_rv_t s_backdoor_thread_start(void *p_in) {
+  ptr p = TO_PTR(p_in);
+  display("backdoor thread started\n");
   (void) Sactivate_thread();
-  display("thread activated\n")
-  Scall0((ptr)Sunbox(TO_PTR(p)));
+  display("thread activated\n");
+  Scall0(Sboxp(p) ? Sunbox(p) : p);
   (void) Sdeactivate_thread();
-  display("thread deactivated\n")
+  display("thread deactivated\n");
   (void) Sactivate_thread();
-  display("thread reactivated\n")
-  Scall0((ptr)Sunbox(TO_PTR(p)));
+  display("thread reactivated\n");
+  Scall0(Sboxp(p) ? Sunbox(p) : p);
   Sdestroy_thread();
-  display("thread destroyed\n")
+  display("thread destroyed\n");
   s_thread_return;
 }
 

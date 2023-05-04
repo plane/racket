@@ -54,6 +54,8 @@ Scheme_Object *scheme_system_type_proc;
 static Scheme_Object *make_string (int argc, Scheme_Object *argv[]);
 static Scheme_Object *string (int argc, Scheme_Object *argv[]);
 static Scheme_Object *string_p (int argc, Scheme_Object *argv[]);
+static Scheme_Object *immutable_string_p (int argc, Scheme_Object *argv[]);
+static Scheme_Object *mutable_string_p (int argc, Scheme_Object *argv[]);
 static Scheme_Object *string_length (int argc, Scheme_Object *argv[]);
 static Scheme_Object *string_eq (int argc, Scheme_Object *argv[]);
 static Scheme_Object *string_locale_eq (int argc, Scheme_Object *argv[]);
@@ -101,6 +103,8 @@ static Scheme_Object *make_byte_string (int argc, Scheme_Object *argv[]);
 static Scheme_Object *byte_string (int argc, Scheme_Object *argv[]);
 static Scheme_Object *byte_p (int argc, Scheme_Object *argv[]);
 static Scheme_Object *byte_string_p (int argc, Scheme_Object *argv[]);
+static Scheme_Object *immutable_byte_string_p (int argc, Scheme_Object *argv[]);
+static Scheme_Object *mutable_byte_string_p (int argc, Scheme_Object *argv[]);
 static Scheme_Object *byte_string_length (int argc, Scheme_Object *argv[]);
 static Scheme_Object *byte_string_eq (int argc, Scheme_Object *argv[]);
 static Scheme_Object *byte_string_lt (int argc, Scheme_Object *argv[]);
@@ -188,9 +192,9 @@ ROSYM static Scheme_Object *fs_change_symbol, *target_machine_symbol, *cross_sym
 ROSYM static Scheme_Object *racket_symbol, *cgc_symbol, *_3m_symbol, *cs_symbol;
 ROSYM static Scheme_Object *force_symbol, *infer_symbol;
 ROSYM static Scheme_Object *platform_3m_path, *platform_cgc_path, *platform_cs_path;
-READ_ONLY static Scheme_Object *zero_length_char_string;
-READ_ONLY static Scheme_Object *zero_length_char_immutable_string;
-READ_ONLY static Scheme_Object *zero_length_byte_string;
+READ_ONLY Scheme_Object *scheme_zero_length_char_string;
+READ_ONLY Scheme_Object *scheme_zero_length_char_immutable_string;
+READ_ONLY Scheme_Object *scheme_zero_length_byte_string;
 
 SHARED_OK static char *embedding_banner;
 SHARED_OK static Scheme_Object *vers_str;
@@ -275,13 +279,13 @@ scheme_init_string (Scheme_Startup_Env *env)
   force_symbol = scheme_intern_symbol("force");
   infer_symbol = scheme_intern_symbol("infer");
 
-  REGISTER_SO(zero_length_char_string);
-  REGISTER_SO(zero_length_char_immutable_string);
-  REGISTER_SO(zero_length_byte_string);
-  zero_length_char_string = scheme_alloc_char_string(0, 0);
-  zero_length_char_immutable_string = scheme_alloc_char_string(0, 0);
-  SCHEME_SET_CHAR_STRING_IMMUTABLE(zero_length_char_immutable_string);
-  zero_length_byte_string = scheme_alloc_byte_string(0, 0);
+  REGISTER_SO(scheme_zero_length_char_string);
+  REGISTER_SO(scheme_zero_length_char_immutable_string);
+  REGISTER_SO(scheme_zero_length_byte_string);
+  scheme_zero_length_char_string = scheme_alloc_char_string(0, 0);
+  scheme_zero_length_char_immutable_string = scheme_alloc_char_string(0, 0);
+  SCHEME_SET_CHAR_STRING_IMMUTABLE(scheme_zero_length_char_immutable_string);
+  scheme_zero_length_byte_string = scheme_alloc_byte_string(0, 0);
 
   REGISTER_SO(complete_symbol);
   REGISTER_SO(continues_symbol);
@@ -323,6 +327,16 @@ scheme_init_string (Scheme_Startup_Env *env)
                                                             | SCHEME_PRIM_PRODUCES_BOOL);
   scheme_addto_prim_instance("string?", p, env);
   scheme_string_p_proc = p;
+
+  p = scheme_make_folding_prim(immutable_string_p, "immutable-string?", 1, 1, 1);
+  SCHEME_PRIM_PROC_FLAGS(p) |= scheme_intern_prim_opt_flags(SCHEME_PRIM_IS_OMITABLE
+                                                            | SCHEME_PRIM_PRODUCES_BOOL);
+  scheme_addto_prim_instance("immutable-string?", p, env);
+
+  p = scheme_make_folding_prim(mutable_string_p, "mutable-string?", 1, 1, 1);
+  SCHEME_PRIM_PROC_FLAGS(p) |= scheme_intern_prim_opt_flags(SCHEME_PRIM_IS_OMITABLE
+                                                            | SCHEME_PRIM_PRODUCES_BOOL);
+  scheme_addto_prim_instance("mutable-string?", p, env);
 
   scheme_addto_prim_instance("make-string",
 			     scheme_make_immed_prim(make_string,
@@ -626,6 +640,16 @@ scheme_init_string (Scheme_Startup_Env *env)
                                                             | SCHEME_PRIM_PRODUCES_BOOL);
   scheme_addto_prim_instance("bytes?", p, env);
   scheme_byte_string_p_proc = p;
+
+  p = scheme_make_folding_prim(immutable_byte_string_p, "immutable-bytes?", 1, 1, 1);
+  SCHEME_PRIM_PROC_FLAGS(p) |= scheme_intern_prim_opt_flags(SCHEME_PRIM_IS_OMITABLE
+                                                            | SCHEME_PRIM_PRODUCES_BOOL);
+  scheme_addto_prim_instance("immutable-bytes?", p, env);
+
+  p = scheme_make_folding_prim(mutable_byte_string_p, "mutable-bytes?", 1, 1, 1);
+  SCHEME_PRIM_PROC_FLAGS(p) |= scheme_intern_prim_opt_flags(SCHEME_PRIM_IS_OMITABLE
+                                                            | SCHEME_PRIM_PRODUCES_BOOL);
+  scheme_addto_prim_instance("mutable-bytes?", p, env);
 
   scheme_addto_prim_instance("make-bytes",
 			     scheme_make_immed_prim(make_byte_string,
@@ -1121,8 +1145,8 @@ Scheme_Object *string_append_immutable(int argc, Scheme_Object *argv[])
 
   r = do_string_append("string-append-immutable", argc, argv);
 
-  if (r == zero_length_char_string)
-    return zero_length_char_immutable_string;
+  if (r == scheme_zero_length_char_string)
+    return scheme_zero_length_char_immutable_string;
 
   SCHEME_SET_CHAR_STRING_IMMUTABLE(r);
 
@@ -3488,13 +3512,13 @@ int scheme_grapheme_cluster_step(mzchar c, int *_state) {
     if (prop == MZ_GRAPHBREAK_LF)
       *_state = 0;
     else
-      *_state = MZG_PROP_STATE();
+      *_state = MZG_NEXT_STATE();
     return 1;
   } else if (prop == MZ_GRAPHBREAK_CR) { /* some of GB3 and some of GB5 */
     *_state = MZG_PROP_STATE();
     return (old_state > 0);
   } else if ((prev == MZ_GRAPHBREAK_CONTROL) || (prev == MZ_GRAPHBREAK_LF)) { /* rest of GB4 */
-    *_state = MZG_PROP_STATE();
+    *_state = MZG_NEXT_STATE();
     return 1;
   } else if ((prop == MZ_GRAPHBREAK_CONTROL) || (prop == MZ_GRAPHBREAK_LF)) { /* rest of GB5 */
     if (old_state == 0)
@@ -4268,6 +4292,10 @@ static Scheme_Object *do_string_normalize_c (const char *who, int argc, Scheme_O
 	&& scheme_combining_class(s[i+1])
 	&& (scheme_combining_class(s[i+1]) < scheme_combining_class(s[i]))) {
       /* Need to reorder */
+      break;
+    } else if ((s[i] >= MZ_JAMO_SYLLABLE_START)
+               && (s[i] <= MZ_JAMO_SYLLABLE_END)) {
+      /* Need Hangul decomposition */
       break;
     } else if ((s[i] >= MZ_JAMO_INITIAL_CONSONANT_START)
 	       && (s[i] <= MZ_JAMO_INITIAL_CONSONANT_END)

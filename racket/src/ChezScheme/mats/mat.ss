@@ -223,18 +223,6 @@
 
 (set! coverage-table (make-parameter #f))
 
-(set! for-each-mat
-  (lambda (proc mats)
-    ;; this imperative variant of `for-each` is meant to avoid running
-    ;; forever if a continuation somehow gets captured part-way
-    ;; through one mat and restored during a later mat
-    (let loop ()
-      (unless (null? mats)
-        (let ([mat (car mats)])
-          (set! mats (cdr mats))
-          (proc mat)
-          (loop))))))
-
 (set! mat-file
   (lambda (dir)
     (unless (string? dir)
@@ -391,6 +379,13 @@
                         (let f ([i (fx- (fxvector-length x) 1)])
                           (or (fx< i 0)
                               (and (fx= (fxvector-ref x i) (fxvector-ref y i))
+                                   (f (fx1- i))))))]
+                  [(flvector? x)
+                   (and (flvector? y)
+                        (fx= (flvector-length x) (flvector-length y))
+                        (let f ([i (fx- (flvector-length x) 1)])
+                          (or (fx< i 0)
+                              (and (eqv? (flvector-ref x i) (flvector-ref y i))
                                    (f (fx1- i))))))]
                   [(box? x) (and (box? y) (e? (unbox x) (unbox y)))]
                   [else #f])

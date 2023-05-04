@@ -70,14 +70,16 @@ For @tech{fixnums}: Unchecked versions of @racket[fx+], @racket[fx-],
 @defproc[(unsafe-fxnot [a fixnum?]) fixnum?]
 @defproc[(unsafe-fxlshift [a fixnum?] [b fixnum?]) fixnum?]
 @defproc[(unsafe-fxrshift [a fixnum?] [b fixnum?]) fixnum?]
+@defproc[(unsafe-fxrshift/logical [a fixnum?] [b fixnum?]) fixnum?]
 )]{
 
 For @tech{fixnums}: Unchecked versions of @racket[fxand], @racket[fxior], @racket[fxxor],
-@racket[fxnot], @racket[fxlshift], and @racket[fxrshift].
+@racket[fxnot], @racket[fxlshift], @racket[fxrshift], and @racket[fxrshift/logical].
 
 @history[#:changed "7.0.0.13" @elem{Allow zero or more arguments for
                                     @racket[unsafe-fxand], @racket[unsafe-fxior],
-                                    and @racket[unsafe-fxxor].}]}
+                                    and @racket[unsafe-fxxor].}
+        #:changed "8.8.0.5" @elem{Added @racket[unsafe-fxrshift/logical].}]}
 
 @deftogether[(
 @defproc[(unsafe-fxpopcount [a (and/c fixnum? (not/c negative?))]) fixnum?]
@@ -491,7 +493,7 @@ Unsafe versions of @racket[u16vector-ref] and
 @defproc[(unsafe-stencil-vector-set! [vec stencil-vector?]
                                      [pos exact-nonnegative-integer?]
                                      [v any/c])
-         avoid?]
+         void?]
 @defproc[(unsafe-stencil-vector-update [vec stencil-vector?]
                                        [remove-mask (integer-in 0 (sub1 (expt 2 (stencil-vector-mask-width))))]
                                        [add-mask (integer-in 0 (sub1 (expt 2 (stencil-vector-mask-width))))]
@@ -525,6 +527,16 @@ field must be mutable. The @racket[unsafe-struct*-cas!] operation
 is analogous to @racket[box-cas!] to perform an atomic compare-and-set.
 
 @history[#:changed "6.11.0.2" @elem{Added @racket[unsafe-struct*-cas!].}]}
+
+
+@defproc[(unsafe-struct*-type [v any/c]) struct-type?]{
+
+Similar to @racket[struct-info], but without an inspector check,
+returning only the first result, and without support for
+@tech{impersonators}.
+
+@history[#:added "8.8.0.3"]}
+
 
 @deftogether[(
 @defproc[(unsafe-mutable-hash-iterate-first
